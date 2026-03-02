@@ -1,0 +1,19 @@
+# Swift
+.build/
+.swiftpm/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+Package.resolved
+
+# Node (test tooling)
+node_modules/
+package-lock.json
+
+# Credentials & secrets
+test-credentials.json
+.env
+.dev.vars
+
+# macOS
+.DS_Store

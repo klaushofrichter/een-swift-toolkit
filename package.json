@@ -1,0 +1,12 @@
+{
+  "name": "een-api-toolkit-swift-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "get-token": "node scripts/get-test-token.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "playwright": "^1.49.0"
+  }
+}
