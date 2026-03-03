@@ -1,0 +1,501 @@
+import Foundation
+import AVFoundation
+import Combine
+import EENApiToolkit
+
+enum ConnectionState: Equatable {
+    case scanning
+    case connecting
+    case live
+    case expired
+    case error(String)
+
+    nonisolated static func == (lhs: ConnectionState, rhs: ConnectionState) -> Bool {
+        switch (lhs, rhs) {
+        case (.scanning, .scanning),
+             (.connecting, .connecting),
+             (.live, .live),
+             (.expired, .expired):
+            return true
+        case (.error(let a), .error(let b)):
+            return a == b
+        default:
+            return false
+        }
+    }
+}
+
+enum AuthMode: Equatable {
+    case qrCode(expiresAt: Date)
+    case oauth
+
+    nonisolated static func == (lhs: AuthMode, rhs: AuthMode) -> Bool {
+        switch (lhs, rhs) {
+        case (.oauth, .oauth): return true
+        case (.qrCode(let a), .qrCode(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+class AppState: ObservableObject {
+    static let defaultTokenTTL: TimeInterval = 3600
+
+    @Published var connectionState: ConnectionState = .scanning
+    @Published var authMode: AuthMode?
+    @Published var cameraName: String = ""
+    @Published var events: [CameraEvent] = []
+    @Published var tokenSecondsRemaining: Int = 0
+    @Published var tokenTTL: TimeInterval = 3600
+    @Published var availableEventTypes: [String] = []
+    @Published var activeEventTypes: [String] = []
+    @Published var historyDuration: TimeInterval = 86400
+    @Published var isMuted: Bool = true
+    @Published var showSSEEvents: Bool = false
+
+    // HLS player
+    @Published var hlsPlayer: AVPlayer?
+    @Published var isVideoPlaying: Bool = false
+    @Published var videoError: String?
+
+    private(set) var cameraId: String = ""
+    private var eventHashes: String = ""
+
+    let toolkit: EENToolkit
+
+    private var tokenTimer: Timer?
+    private var sseConnection: SSEConnection?
+    private var subscriptionId: String?
+    private var playerObservation: NSKeyValueObservation?
+
+    init(toolkit: EENToolkit) {
+        self.toolkit = toolkit
+    }
+
+    // MARK: - QR Code Flow
+
+    private static let acceptedSchemes = [AppConfig.urlScheme, "eenviewer"]
+
+    func handleViewerURL(_ url: URL) {
+        guard let scheme = url.scheme, Self.acceptedSchemes.contains(scheme) else {
+            connectionState = .error("Invalid URL scheme: \(url.scheme ?? "nil")")
+            return
+        }
+
+        // OAuth callback - ignore here, handled by app entry point
+        if url.host == "callback" { return }
+
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let queryItems = components.queryItems, !queryItems.isEmpty else {
+            connectionState = .error("Could not parse URL parameters")
+            return
+        }
+
+        let token = queryItems.first(where: { $0.name == "token" })?.value
+        let cam = queryItems.first(where: { $0.name == "cam" })?.value
+        let base = queryItems.first(where: { $0.name == "base" })?.value
+        let events = queryItems.first(where: { $0.name == "events" })?.value ?? ""
+        let ttlString = queryItems.first(where: { $0.name == "ttl" })?.value
+        let ttl: TimeInterval? = ttlString.flatMap { Double($0) }
+            .map { $0 - Date().timeIntervalSince1970 }
+            .flatMap { $0 > 0 ? $0 : nil }
+
+        guard let token, !token.isEmpty,
+              let cam, !cam.isEmpty,
+              let base, !base.isEmpty else {
+            let found = queryItems.map { $0.name }.joined(separator: ", ")
+            connectionState = .error("Missing parameters. Found: [\(found)]")
+            return
+        }
+
+        configureQRCode(token: token, cameraId: cam, baseUrl: base, eventHashes: events, ttl: ttl)
+    }
+
+    func configureQRCode(token: String, cameraId: String, baseUrl: String, eventHashes: String = "", ttl: TimeInterval? = nil) {
+        cleanup()
+
+        self.cameraId = cameraId
+        self.eventHashes = eventHashes
+        let effectiveTTL = ttl ?? Self.defaultTokenTTL
+        self.tokenTTL = effectiveTTL
+
+        let normalizedBase = baseUrl.hasPrefix("http") ? baseUrl : "https://\(baseUrl)"
+
+        // Inject token into toolkit's auth state
+        toolkit.authState.inject(token: token, baseUrl: normalizedBase, expiresIn: Int(effectiveTTL))
+
+        let expiresAt = Date().addingTimeInterval(effectiveTTL)
+        self.authMode = .qrCode(expiresAt: expiresAt)
+        self.connectionState = .connecting
+        self.events = []
+
+        startTokenCountdown(expiresAt: expiresAt)
+        startConnection()
+    }
+
+    // MARK: - OAuth Flow
+
+    func configureOAuth() {
+        self.authMode = .oauth
+        self.connectionState = .connecting
+        self.events = []
+
+        // Select first available camera
+        Task {
+            do {
+                let result = try await toolkit.cameras.list(params: ListCamerasParams(pageSize: 1))
+                guard let camera = result.results.first else {
+                    self.connectionState = .error("No cameras available on this account")
+                    return
+                }
+                self.cameraId = camera.id
+                self.cameraName = camera.name
+                self.startConnection()
+            } catch {
+                self.connectionState = .error("Failed to load cameras: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // MARK: - Connection
+
+    private func startConnection() {
+        Task {
+            do {
+                // Fetch camera info, event types, and HLS URL concurrently
+                async let cameraFetch = toolkit.cameras.get(id: cameraId)
+                async let typesFetch = toolkit.events.listFieldValues(actor: "camera:\(cameraId)")
+                async let feedsFetch = fetchHLSUrl()
+
+                // Media session init is best-effort (may not exist on all API versions)
+                Task { try? await toolkit.media.initMediaSession(deviceId: cameraId) }
+
+                let camera = try await cameraFetch
+                self.cameraName = camera.name
+
+                let fieldValues = try await typesFetch
+                let fetchedTypes = fieldValues.type
+                self.availableEventTypes = fetchedTypes.sorted()
+
+                if eventHashes.isEmpty {
+                    self.activeEventTypes = fetchedTypes
+                } else {
+                    let lookup = EventTypeHash.buildLookup(fetchedTypes)
+                    let resolved = EventTypeHash.resolve(hashString: eventHashes, lookup: lookup)
+                    self.activeEventTypes = resolved.isEmpty ? fetchedTypes : resolved
+                }
+
+                let hlsUrl = try await feedsFetch
+                setupHLSPlayer(hlsUrl: hlsUrl)
+
+                await startSSESubscription()
+
+                self.connectionState = .live
+            } catch {
+                self.connectionState = .error(error.localizedDescription)
+            }
+        }
+    }
+
+    private func fetchHLSUrl() async throws -> String {
+        var params = ListFeedsParams()
+        params.deviceId = cameraId
+        params.type = .main
+        params.include = ["hlsUrl"]
+        let feeds = try await toolkit.feeds.list(params: params)
+        guard let hlsUrl = feeds.results.first?.hlsUrl else {
+            throw NSError(domain: "AppState", code: -1, userInfo: [NSLocalizedDescriptionKey: "No HLS URL available for this camera"])
+        }
+        return hlsUrl
+    }
+
+    // MARK: - HLS Player
+
+    private func setupHLSPlayer(hlsUrl: String) {
+        guard let url = URL(string: hlsUrl) else {
+            videoError = "Invalid HLS URL"
+            return
+        }
+        let token = toolkit.authState.token ?? ""
+        let headers = ["Authorization": "Bearer \(token)"]
+        let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+        let item = AVPlayerItem(asset: asset)
+        let player = AVPlayer(playerItem: item)
+
+        playerObservation = item.observe(\.status) { [weak self] item, _ in
+            Task { @MainActor [weak self] in
+                switch item.status {
+                case .readyToPlay:
+                    self?.isVideoPlaying = true
+                case .failed:
+                    self?.videoError = item.error?.localizedDescription ?? "Playback failed"
+                default:
+                    break
+                }
+            }
+        }
+
+        self.hlsPlayer = player
+        self.isVideoPlaying = false
+        self.videoError = nil
+        player.play()
+    }
+
+    // MARK: - SSE Events
+
+    private func startSSESubscription() async {
+        // Clean up previous
+        sseConnection?.close()
+        if let subId = subscriptionId {
+            try? await toolkit.eventSubscriptions.delete(id: subId)
+        }
+
+        do {
+            let subscription = try await toolkit.eventSubscriptions.create(
+                params: CreateEventSubscriptionParams(
+                    sseFilters: [FilterCreate(
+                        actors: ["camera:\(cameraId)"],
+                        types: activeEventTypes.map { EventTypeFilter(id: $0) }
+                    )]
+                )
+            )
+            self.subscriptionId = subscription.id
+
+            guard case .sse(let sseUrl) = subscription.deliveryConfig, let url = sseUrl else {
+                self.events.insert(CameraEvent(type: "sse_error", actorId: cameraId, description: "No SSE URL in subscription response"), at: 0)
+                return
+            }
+
+            // Load history first
+            await loadHistory()
+
+            // Connect SSE
+            self.events.insert(CameraEvent(type: "sse_connecting", actorId: cameraId, description: "Connecting to event stream..."), at: 0)
+
+            let connection = toolkit.eventSubscriptions.connect(
+                sseUrl: url,
+                options: SSEConnectionOptions(
+                    onEvent: { [weak self] event in
+                        Task { @MainActor [weak self] in
+                            self?.handleSSEEvent(event)
+                        }
+                    },
+                    onError: { [weak self] error in
+                        Task { @MainActor [weak self] in
+                            self?.events.insert(CameraEvent(
+                                type: "sse_error",
+                                actorId: self?.cameraId ?? "",
+                                description: "SSE error: \(error.localizedDescription)"
+                            ), at: 0)
+                        }
+                    },
+                    onStatusChange: { [weak self] status in
+                        Task { @MainActor [weak self] in
+                            if status == .connected {
+                                self?.events.insert(CameraEvent(
+                                    type: "sse_connected",
+                                    actorId: self?.cameraId ?? "",
+                                    description: "Connected to event stream"
+                                ), at: 0)
+                            }
+                        }
+                    }
+                )
+            )
+            self.sseConnection = connection
+        } catch {
+            self.events.insert(CameraEvent(
+                type: "sse_error",
+                actorId: cameraId,
+                description: "Failed to create subscription: \(error.localizedDescription)"
+            ), at: 0)
+        }
+    }
+
+    private func handleSSEEvent(_ sseEvent: SSEEvent) {
+        let description = EventTypeHash.eventDescription(type: sseEvent.type, startTimestamp: sseEvent.startTimestamp)
+        let date = EventTypeHash.isoFormatter.date(from: sseEvent.startTimestamp) ?? Date()
+        let event = CameraEvent(
+            type: sseEvent.type,
+            actorId: sseEvent.actorId,
+            description: description,
+            timestamp: date,
+            eventId: sseEvent.id
+        )
+        insertEvent(event)
+
+        if !event.type.hasPrefix("sse_") && !isMuted {
+            SoundPlayer.shared.play()
+        }
+    }
+
+    // MARK: - History
+
+    private func loadHistory() async {
+        let startTime = formatTimestamp(Date().addingTimeInterval(-historyDuration))
+        let endTime = formatTimestamp(Date())
+
+        do {
+            var params = ListEventsParams(
+                actor: "camera:\(cameraId)",
+                typeIn: activeEventTypes,
+                startTimestampGte: startTime,
+                pageSize: 100
+            )
+            params.startTimestampLte = endTime
+            params.sort = "-startTimestamp"
+
+            let result = try await toolkit.events.list(params: params)
+            for apiEvent in result.results {
+                let description = EventTypeHash.eventDescription(type: apiEvent.type, startTimestamp: apiEvent.startTimestamp)
+                let date = EventTypeHash.isoFormatter.date(from: apiEvent.startTimestamp) ?? Date()
+                let event = CameraEvent(
+                    type: apiEvent.type,
+                    actorId: apiEvent.actorId,
+                    description: description,
+                    timestamp: date,
+                    eventId: apiEvent.id
+                )
+                insertEvent(event)
+            }
+        } catch {
+            self.events.insert(CameraEvent(
+                type: "sse_error",
+                actorId: cameraId,
+                description: "History load failed: \(error.localizedDescription)"
+            ), at: 0)
+        }
+    }
+
+    func refreshHistory() {
+        events = []
+        Task { await loadHistory() }
+    }
+
+    // MARK: - Camera Switching
+
+    func switchCamera(to newCameraId: String) {
+        guard newCameraId != cameraId else { return }
+
+        sseConnection?.close()
+        sseConnection = nil
+        hlsPlayer?.pause()
+        hlsPlayer = nil
+        playerObservation?.invalidate()
+        isVideoPlaying = false
+        videoError = nil
+        events = []
+        connectionState = .connecting
+        cameraId = newCameraId
+
+        let previousActiveTypes = activeEventTypes
+
+        Task {
+            do {
+                async let cameraFetch = toolkit.cameras.get(id: newCameraId)
+                async let typesFetch = toolkit.events.listFieldValues(actor: "camera:\(newCameraId)")
+                async let feedsFetch = fetchHLSUrl()
+
+                let camera = try await cameraFetch
+                self.cameraName = camera.name
+
+                let fieldValues = try await typesFetch
+                let fetchedTypes = fieldValues.type
+                self.availableEventTypes = fetchedTypes.sorted()
+
+                let intersection = previousActiveTypes.filter { fetchedTypes.contains($0) }
+                self.activeEventTypes = intersection.isEmpty ? fetchedTypes : intersection
+
+                let hlsUrl = try await feedsFetch
+                setupHLSPlayer(hlsUrl: hlsUrl)
+
+                await startSSESubscription()
+
+                self.connectionState = .live
+            } catch {
+                self.connectionState = .error(error.localizedDescription)
+            }
+        }
+    }
+
+    // MARK: - Event Filter
+
+    func applyEventFilter(_ types: [String], duration: TimeInterval? = nil) {
+        activeEventTypes = types
+        if let duration { historyDuration = duration }
+        events = []
+        Task { await startSSESubscription() }
+    }
+
+    // MARK: - Token Countdown (QR mode only)
+
+    private func startTokenCountdown(expiresAt: Date) {
+        tokenTimer?.invalidate()
+        updateTokenRemaining(expiresAt: expiresAt)
+        tokenTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.updateTokenRemaining(expiresAt: expiresAt)
+            }
+        }
+    }
+
+    private func updateTokenRemaining(expiresAt: Date) {
+        let remaining = Int(expiresAt.timeIntervalSinceNow)
+        if remaining <= 0 {
+            tokenSecondsRemaining = 0
+            tokenTimer?.invalidate()
+            tokenTimer = nil
+            hlsPlayer?.pause()
+            sseConnection?.close()
+            connectionState = .expired
+        } else {
+            tokenSecondsRemaining = remaining
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func insertEvent(_ event: CameraEvent) {
+        if let eventId = event.eventId,
+           let idx = events.firstIndex(where: { $0.eventId == eventId }) {
+            events[idx] = event
+        } else {
+            let insertIndex = events.firstIndex(where: { $0.timestamp < event.timestamp }) ?? events.endIndex
+            events.insert(event, at: insertIndex)
+            if events.count > 100 {
+                events.removeLast()
+            }
+        }
+    }
+
+    func reset() {
+        cleanup()
+        connectionState = .scanning
+        authMode = nil
+        cameraId = ""
+        cameraName = ""
+        eventHashes = ""
+        events = []
+        availableEventTypes = []
+        activeEventTypes = []
+    }
+
+    private func cleanup() {
+        tokenTimer?.invalidate()
+        tokenTimer = nil
+        sseConnection?.close()
+        sseConnection = nil
+        hlsPlayer?.pause()
+        hlsPlayer = nil
+        playerObservation?.invalidate()
+        playerObservation = nil
+        isVideoPlaying = false
+        videoError = nil
+
+        if let subId = subscriptionId {
+            let tk = toolkit
+            Task { try? await tk.eventSubscriptions.delete(id: subId) }
+            subscriptionId = nil
+        }
+    }
+}

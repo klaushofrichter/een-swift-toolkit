@@ -1,0 +1,187 @@
+import SwiftUI
+
+struct MainContentView: View {
+    @EnvironmentObject var appState: AppState
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @State private var isVideoFullscreen = false
+    @State private var showCameraPicker = false
+
+    @ViewBuilder
+    private var videoOrPlaceholder: some View {
+        if appState.hlsPlayer != nil {
+            LiveVideoView()
+                .onTapGesture { isVideoFullscreen = true }
+        } else {
+            Color.black
+                .overlay(Text("No video stream").foregroundColor(.gray))
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
+
+                switch appState.connectionState {
+                case .scanning:
+                    ScannerView()
+
+                case .connecting:
+                    VStack(spacing: 20) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .tint(.white)
+                        Text("Connecting to camera...")
+                            .foregroundColor(.white)
+                            .font(.headline)
+                        if !appState.cameraId.isEmpty {
+                            Text(appState.cameraId)
+                                .foregroundColor(.gray)
+                                .font(.caption)
+                                .monospaced()
+                        }
+                    }
+
+                case .live:
+                    VStack(spacing: 0) {
+                        // Camera name + countdown header
+                        HStack {
+                            Button {
+                                showCameraPicker = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(appState.cameraName.isEmpty ? appState.cameraId : appState.cameraName)
+                                            .font(.headline)
+                                            .foregroundColor(.white)
+                                            .lineLimit(1)
+                                        Text(appState.cameraId)
+                                            .font(.caption2)
+                                            .foregroundColor(.gray)
+                                            .monospaced()
+                                    }
+                                    Image(systemName: "chevron.down")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                            Spacer()
+                            TokenCountdownView()
+                            Button {
+                                appState.reset()
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.gray)
+                            }
+                            .padding(.leading, 8)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .background(Color.black.opacity(0.8))
+
+                        if verticalSizeClass == .compact {
+                            GeometryReader { geo in
+                                HStack(spacing: 0) {
+                                    videoOrPlaceholder
+                                        .frame(width: geo.size.width * 0.6)
+
+                                    EventFeedView()
+                                        .frame(width: geo.size.width * 0.4)
+                                }
+                            }
+                        } else {
+                            videoOrPlaceholder
+                                .aspectRatio(16/9, contentMode: .fit)
+
+                            EventFeedView()
+                        }
+                    }
+
+                case .expired:
+                    VStack(spacing: 20) {
+                        Image(systemName: "clock.badge.exclamationmark")
+                            .font(.system(size: 60))
+                            .foregroundColor(.orange)
+                        Text("Session Expired")
+                            .font(.title)
+                            .foregroundColor(.white)
+                        Text("Scan a new QR code or sign in again to reconnect.")
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                        Button("Start Over") {
+                            appState.reset()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.blue)
+                    }
+
+                case .error(let message):
+                    VStack(spacing: 20) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 60))
+                            .foregroundColor(.red)
+                        Text("Connection Error")
+                            .font(.title)
+                            .foregroundColor(.white)
+                        Text(message)
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                            .font(.body)
+                        Button("Try Again") {
+                            appState.reset()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.blue)
+                    }
+                }
+            }
+            .navigationBarHidden(true)
+        }
+        .fullScreenCover(isPresented: $isVideoFullscreen) {
+            FullscreenVideoView(
+                onDismiss: { isVideoFullscreen = false }
+            )
+        }
+        .sheet(isPresented: $showCameraPicker) {
+            CameraPickerSheet()
+        }
+    }
+}
+
+// MARK: - Fullscreen Video
+
+private struct FullscreenVideoView: View {
+    let onDismiss: () -> Void
+    @EnvironmentObject var appState: AppState
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width + geo.safeAreaInsets.leading + geo.safeAreaInsets.trailing
+            let h = geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom
+
+            ZStack {
+                Color.black.ignoresSafeArea()
+
+                if appState.hlsPlayer != nil {
+                    if verticalSizeClass == .compact {
+                        LiveVideoView()
+                            .ignoresSafeArea()
+                    } else {
+                        LiveVideoView()
+                            .frame(width: h, height: w)
+                            .rotationEffect(.degrees(90))
+                            .frame(width: w, height: h)
+                    }
+                }
+            }
+            .ignoresSafeArea()
+            .onTapGesture { onDismiss() }
+            .statusBarHidden(true)
+        }
+        .ignoresSafeArea()
+    }
+}

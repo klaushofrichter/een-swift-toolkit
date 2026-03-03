@@ -231,10 +231,34 @@ params.type = .preview  // Only preview feeds
 params.include = ["hlsUrl", "multipartUrl"]
 ```
 
+## Recorded Image for Events
+
+When fetching a recorded image for a specific event, use `timestampGte` (not `timestamp`).
+The EEN API returns "bad request" if you use exact `timestamp` match without a recording at
+that precise millisecond. Use `timestamp__gte` to find the nearest image at or after the event time.
+
+```swift
+var params = GetRecordedImageParams()
+params.timestampGte = formatTimestamp(event.timestamp)  // NOT params.timestamp
+params.type = .preview
+params.targetWidth = 640
+let result = try await toolkit.media.getRecordedImage(deviceId: cameraId, params: params)
+```
+
+## Media Session Initialization
+
+`toolkit.media.initMediaSession(deviceId:)` may return 404 on some API configurations.
+Make it best-effort (non-fatal) so it doesn't block the connection flow:
+
+```swift
+Task { try? await toolkit.media.initMediaSession(deviceId: cameraId) }
+```
+
 ## Constraints
 - Live and recorded image methods return raw `Data` (JPEG bytes), not base64.
 - Always use `formatTimestamp()` for timestamp parameters.
+- **Use `timestampGte` (not `timestamp`) when fetching recorded images for events** — exact timestamp match causes "bad request".
 - Feed URLs (hlsUrl, multipartUrl, etc.) require the corresponding include parameter.
 - The `listMedia` endpoint uses `startTimestamp__gte` (filter suffix), not bare `startTimestamp`.
-- Media session initialization may be required before using certain stream URLs.
+- Media session initialization may not be available on all API versions — make it best-effort.
 - **Pagination:** The EEN API returns `""` (empty string) for `nextPageToken` when no more pages exist. `PaginatedResult` normalizes this to `nil`, so use `if let nextPageToken = result.nextPageToken` to check for more pages.

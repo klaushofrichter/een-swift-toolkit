@@ -34,6 +34,18 @@ public final class AuthState: ObservableObject, Sendable {
 
     public init() {}
 
+    // MARK: - Public Token Injection
+
+    /// Inject authentication credentials directly (e.g., from a QR code or external token source).
+    /// This bypasses the OAuth flow and sets the token and base URL directly.
+    public func inject(token: String, baseUrl: String, expiresIn: Int) {
+        self.token = token
+        self.baseUrl = baseUrl
+        self.sessionId = nil
+        self.userEmail = nil
+        self.tokenExpiration = Date().addingTimeInterval(TimeInterval(expiresIn))
+    }
+
     // MARK: - Internal Mutators
 
     func update(token: String, expiresIn: Int, baseUrl: String, sessionId: String, userEmail: String?) {

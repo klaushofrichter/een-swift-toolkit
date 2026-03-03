@@ -3,6 +3,7 @@
 .swiftpm/
 *.xcodeproj/
 !examples/**/SwiftUsers.xcodeproj/
+!examples/**/ObservationCompanion.xcodeproj/
 xcuserdata/
 DerivedData/
 Package.resolved

@@ -109,6 +109,30 @@ let config = EENToolkitConfig(
 let toolkit = EENToolkit(config: config)
 ```
 
+### Mobile vs Web Proxy
+
+There are two types of OAuth proxies, and using the wrong one causes blank login screens:
+
+- **Web proxy** (e.g., Cloudflare Workers `een-oauth-proxy`): Uses cookies + CORS. Does NOT work for mobile apps.
+- **Mobile proxy** (e.g., `een-mobile-proxy` at `http://127.0.0.1:3333`): Uses Bearer-only auth. Required for iOS apps.
+
+For mobile apps using WKWebView-based OAuth, the `redirectUri` should point to the proxy
+(e.g., `http://127.0.0.1:3333`), NOT a custom URL scheme. The proxy receives the OAuth
+callback and the WKWebView intercepts the redirect to extract the authorization code.
+
+```swift
+// CORRECT for mobile apps with WKWebView OAuth:
+let config = EENToolkitConfig(
+    proxyUrl: "http://127.0.0.1:3333",      // Mobile proxy
+    clientId: "PREVIEW-KLAUS-MOBILE",
+    redirectUri: "http://127.0.0.1:3333",    // Proxy handles callback
+    storageStrategy: .keychain
+)
+
+// The app's custom URL scheme (e.g., "eenobserve://") is separate —
+// used for QR code deep links, NOT for OAuth redirect.
+```
+
 ## Login Flow
 
 ### 1. Trigger Login (ASWebAuthenticationSession)
@@ -230,9 +254,23 @@ func logout() async {
 - Keychain storage encrypts tokens at rest
 - Hostname validation prevents URL spoofing
 
+## Token Injection (QR Code Flow)
+
+For apps that support both OAuth and QR code token injection, use `AuthState.inject()`:
+
+```swift
+// Inject a token directly (e.g., from a QR code deep link)
+toolkit.authState.inject(token: token, baseUrl: baseUrl, expiresIn: Int(ttl))
+```
+
+This bypasses the OAuth flow entirely. The injected token has a fixed TTL and cannot be refreshed.
+
 ## Constraints
+- **Mobile apps must use the mobile proxy**, not the Cloudflare Workers web proxy — the web proxy uses cookies/CORS which don't work in WKWebView or ASWebAuthenticationSession.
+- For WKWebView OAuth, set `redirectUri` to the proxy URL, not a custom URL scheme.
 - The proxy URL must be accessible from the device (not localhost in production).
 - `ASWebAuthenticationSession` requires a presentation context on iOS.
 - `storageStrategy: .keychain` is recommended for production; `.memory` is for testing.
 - Token auto-refresh runs automatically — you don't need to manage it manually.
 - `authState` is `@MainActor` — access from background tasks with `await`.
+- `getAuthUrl()` is actor-isolated — call it in a `Task` and store the result in `@State`, don't call it synchronously in a SwiftUI view body.
