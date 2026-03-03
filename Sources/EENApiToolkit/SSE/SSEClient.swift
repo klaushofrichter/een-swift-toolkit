@@ -20,6 +20,7 @@ public struct SSEConnectionOptions: Sendable {
 /// A connection to an SSE event stream. Call `close()` to disconnect.
 public final class SSEConnection: NSObject, @unchecked Sendable {
     private var task: URLSessionDataTask?
+    private var session: URLSession?
     private let options: SSEConnectionOptions
     private var buffer = ""
     private let decoder = JSONDecoder()
@@ -46,12 +47,13 @@ public final class SSEConnection: NSObject, @unchecked Sendable {
         var request = URLRequest(url: sseUrl)
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.timeoutInterval = TimeInterval(Int.max) // Long-lived connection
+        request.timeoutInterval = .infinity
 
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = TimeInterval(Int.max)
-        config.timeoutIntervalForResource = TimeInterval(Int.max)
+        config.timeoutIntervalForRequest = .infinity
+        config.timeoutIntervalForResource = .infinity
         let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        self.session = session
 
         let task = session.dataTask(with: request)
         self.task = task
@@ -65,6 +67,8 @@ public final class SSEConnection: NSObject, @unchecked Sendable {
     public func close() {
         task?.cancel()
         task = nil
+        session?.invalidateAndCancel()
+        session = nil
         updateStatus(.disconnected)
         EENDebug.log("SSE connection closed")
     }
@@ -128,8 +132,8 @@ extension SSEConnection: URLSessionDataDelegate {
         guard let chunk = String(data: data, encoding: .utf8) else { return }
         lock.lock()
         buffer += chunk
-        lock.unlock()
         processBuffer()
+        lock.unlock()
     }
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {

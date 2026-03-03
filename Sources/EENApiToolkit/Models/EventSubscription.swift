@@ -24,10 +24,10 @@ public enum DeliveryConfig: Codable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(String.self, forKey: .type)
         switch type {
-        case "serverSentEvents.v1":
+        case EventSubscriptionDeliveryType.serverSentEvents.rawValue:
             let sseUrl = try container.decodeIfPresent(String.self, forKey: .sseUrl)
             self = .sse(sseUrl: sseUrl)
-        case "webhook.v1":
+        case EventSubscriptionDeliveryType.webhook.rawValue:
             let secret = try container.decodeIfPresent(String.self, forKey: .secret)
             self = .webhook(secret: secret)
         default:
@@ -39,10 +39,10 @@ public enum DeliveryConfig: Codable, Sendable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
         case .sse(let sseUrl):
-            try container.encode("serverSentEvents.v1", forKey: .type)
+            try container.encode(EventSubscriptionDeliveryType.serverSentEvents.rawValue, forKey: .type)
             try container.encodeIfPresent(sseUrl, forKey: .sseUrl)
         case .webhook(let secret):
-            try container.encode("webhook.v1", forKey: .type)
+            try container.encode(EventSubscriptionDeliveryType.webhook.rawValue, forKey: .type)
             try container.encodeIfPresent(secret, forKey: .secret)
         }
     }
@@ -73,7 +73,7 @@ public struct EventSubscription: Codable, Identifiable, Sendable {
 public struct SSEDeliveryConfigCreate: Codable, Sendable {
     public let type: String
 
-    public init() { self.type = "serverSentEvents.v1" }
+    public init() { self.type = EventSubscriptionDeliveryType.serverSentEvents.rawValue }
 }
 
 /// Delivery config for creating a new webhook subscription.
@@ -84,7 +84,7 @@ public struct WebhookDeliveryConfigCreate: Codable, Sendable {
     public let technicalContactName: String
 
     public init(webhookUrl: String, technicalContactEmail: String, technicalContactName: String) {
-        self.type = "webhook.v1"
+        self.type = EventSubscriptionDeliveryType.webhook.rawValue
         self.webhookUrl = webhookUrl
         self.technicalContactEmail = technicalContactEmail
         self.technicalContactName = technicalContactName
@@ -125,9 +125,9 @@ public enum DeliveryConfigCreateWrapper: Codable, Sendable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         switch self {
         case .sse:
-            try container.encode("serverSentEvents.v1", forKey: .type)
+            try container.encode(EventSubscriptionDeliveryType.serverSentEvents.rawValue, forKey: .type)
         case .webhook(let url, let email, let name):
-            try container.encode("webhook.v1", forKey: .type)
+            try container.encode(EventSubscriptionDeliveryType.webhook.rawValue, forKey: .type)
             try container.encode(url, forKey: .webhookUrl)
             try container.encode(email, forKey: .technicalContactEmail)
             try container.encode(name, forKey: .technicalContactName)
@@ -137,7 +137,7 @@ public enum DeliveryConfigCreateWrapper: Codable, Sendable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let type = try container.decode(String.self, forKey: .type)
-        if type == "webhook.v1" {
+        if type == EventSubscriptionDeliveryType.webhook.rawValue {
             self = .webhook(
                 url: try container.decode(String.self, forKey: .webhookUrl),
                 email: try container.decode(String.self, forKey: .technicalContactEmail),

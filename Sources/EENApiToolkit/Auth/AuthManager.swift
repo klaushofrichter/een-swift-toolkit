@@ -32,6 +32,10 @@ public actor AuthManager {
         static let tokenExpiration = "een_token_expiration"
     }
 
+    private var normalizedProxyUrl: String {
+        config.proxyUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
     public init(config: EENToolkitConfig, authState: AuthState, tokenStorage: TokenStorage? = nil) {
         self.config = config
         self.authState = authState
@@ -61,7 +65,7 @@ public actor AuthManager {
     /// Exchanges the authorization code for tokens via the proxy.
     @discardableResult
     public func handleCallback(code: String, state: String?) async throws -> TokenResponse {
-        let proxyUrl = config.proxyUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let proxyUrl = normalizedProxyUrl
         guard let url = URL(string: "\(proxyUrl)/proxy/getAccessToken") else {
             throw EENError(code: .validationError, message: "Invalid proxy URL")
         }
@@ -120,6 +124,7 @@ public actor AuthManager {
             return try await existing.value
         }
 
+        let proxyUrl = normalizedProxyUrl
         let task = Task { [weak self] in
             guard let self else { return }
             defer { Task { await self.clearRefreshTask() } }
@@ -131,8 +136,6 @@ public actor AuthManager {
 
             await MainActor.run { self.authState.setRefreshing(true) }
             defer { Task { await MainActor.run { self.authState.setRefreshing(false) } } }
-
-            let proxyUrl = self.config.proxyUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
             guard let url = URL(string: "\(proxyUrl)/proxy/refreshAccessToken") else {
                 throw EENError(code: .validationError, message: "Invalid proxy URL")
             }
@@ -174,7 +177,7 @@ public actor AuthManager {
             EENDebug.log("Token refreshed, expires in \(refreshResponse.expiresIn)s")
         }
 
-        refreshTask = task
+        refreshTask = task  // Assign before awaiting to prevent concurrent refresh tasks
         try await task.value
     }
 
@@ -187,7 +190,7 @@ public actor AuthManager {
 
         guard let sessionId else { return }
 
-        let proxyUrl = config.proxyUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let proxyUrl = normalizedProxyUrl
         guard let url = URL(string: "\(proxyUrl)/proxy/revoke") else { return }
 
         var request = URLRequest(url: url)

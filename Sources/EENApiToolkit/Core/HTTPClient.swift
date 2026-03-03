@@ -5,11 +5,13 @@ actor HTTPClient {
     private let session: URLSession
     private let authState: AuthState
     private let decoder: JSONDecoder
+    private let encoder: JSONEncoder
 
     init(authState: AuthState, configuration: URLSessionConfiguration = .default) {
         self.session = URLSession(configuration: configuration)
         self.authState = authState
         self.decoder = JSONDecoder()
+        self.encoder = JSONEncoder()
     }
 
     /// Perform a request and decode the response as `T`.
@@ -35,8 +37,7 @@ actor HTTPClient {
     // MARK: - Internal
 
     private func performRequest(_ endpoint: Endpoint) async throws -> Data {
-        let baseUrl = await authState.baseUrl
-        let token = await authState.token
+        let (baseUrl, token) = await (authState.baseUrl, authState.token)
 
         guard let baseUrl, let token else {
             throw EENError(code: .authRequired, message: "Authentication required")
@@ -54,7 +55,7 @@ actor HTTPClient {
 
         if let body = endpoint.body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONEncoder().encode(AnyEncodable(body))
+            request.httpBody = try encoder.encode(AnyEncodable(body))
         }
 
         EENDebug.log("\(endpoint.method.rawValue) \(url.absoluteString)")

@@ -19,6 +19,12 @@ public func formatTimestamp(_ timestamp: String) -> String {
     return timestamp
 }
 
+private let iso8601Formatter: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return formatter
+}()
+
 /// Format a `Date` as an EEN API timestamp string.
 ///
 /// Returns a string in `yyyy-MM-dd'T'HH:mm:ss.SSS+00:00` format.
@@ -26,8 +32,6 @@ public func formatTimestamp(_ timestamp: String) -> String {
 /// - Parameter date: The date to format.
 /// - Returns: EEN-compatible timestamp string.
 public func formatTimestamp(_ date: Date) -> String {
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    let iso = formatter.string(from: date)
+    let iso = iso8601Formatter.string(from: date)
     return formatTimestamp(iso)
 }
