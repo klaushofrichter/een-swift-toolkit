@@ -1,6 +1,6 @@
 # EEN Swift Toolkit
 
-A native Swift SDK for the [Eagle Eye Networks](https://www.een.com) REST API. Provides type-safe access to all 16 API resource domains with full async/await support.
+A native Swift SDK for the [Eagle Eye Networks](https://www.een.com) REST API v3.0. Provides type-safe access to all 16 API resource domains with full async/await support.
 
 ## Requirements
 
@@ -26,17 +26,21 @@ Then add `EENApiToolkit` to your target's dependencies.
 import EENApiToolkit
 
 let config = EENToolkitConfig(
-    proxyBaseUrl: "https://your-proxy.example.com",
-    clientId: "YOUR_CLIENT_ID"
+    proxyUrl: "http://127.0.0.1:3333",
+    clientId: "YOUR_CLIENT_ID",
+    redirectUri: "http://127.0.0.1:3333",
+    storageStrategy: .keychain
 )
 let toolkit = EENToolkit(config: config)
 
 // Authenticate via OAuth proxy
-let authUrl = try await toolkit.auth.getAuthUrl()
-// ... handle OAuth flow ...
+let authUrl = await toolkit.auth.getAuthUrl()
+// ... present login UI, handle callback ...
 
 // Fetch cameras
-let cameras = try await toolkit.cameras.list()
+var params = ListCamerasParams(pageSize: 20)
+params.include = ["deviceInfo", "status"]
+let cameras = try await toolkit.cameras.list(params: params)
 for camera in cameras.results {
     print(camera.name)
 }
@@ -48,14 +52,22 @@ for camera in cameras.results {
 |-----------|------|
 | `EENToolkit` | Central entry point with service properties (`toolkit.cameras`, `toolkit.events`, etc.) |
 | `HTTPClient` | Actor wrapping URLSession for thread-safe networking |
-| `AuthManager` | OAuth proxy flow (getAuthUrl, handleCallback, refreshToken, revokeToken) |
-| `AuthState` | ObservableObject for SwiftUI integration |
+| `AuthManager` | Actor handling OAuth proxy flow (getAuthUrl, handleCallback, refreshToken, revokeToken) |
+| `AuthState` | `@MainActor ObservableObject` for SwiftUI auth state binding |
 | `TokenStorage` | Protocol with Keychain and InMemory implementations |
+| `PaginatedResult<T>` | Generic paginated response wrapper (normalizes empty-string tokens to nil) |
 | `SSEClient` | Server-Sent Events via URLSessionDataDelegate |
+
+### Concurrency Model
+
+- **HTTPClient** — actor (thread-safe networking)
+- **AuthManager** — actor (token lifecycle)
+- **AuthState** — @MainActor (UI binding)
+- **Services** — Sendable structs (stateless, safe to share)
 
 ## API Services
 
-All services use `async throws` and return Codable, Sendable, Identifiable models.
+All services use `async throws` and return `Codable`, `Sendable`, `Identifiable` models.
 
 | Service | Resource |
 |---------|----------|
@@ -76,19 +88,30 @@ All services use `async throws` and return Codable, Sendable, Identifiable model
 | `PTZService` | Pan-Tilt-Zoom |
 | `UserService` | Users |
 
-## Query Filters
+## EEN API Conventions
 
-The SDK supports EEN filter conventions via `QueryItemBuilder`:
+- **Timestamps** must use `+00:00` format (not `Z`). Use `formatTimestamp()`.
+- **Actor parameters** use `camera:{cameraId}` format for event queries.
+- **Include parameters** are comma-separated field names (e.g., `["deviceInfo", "status"]`).
+- **Filter suffixes**: `__in`, `__gte`, `__lte`, `__ne`, `__contains`, `__any`.
+- **Pagination**: The API returns `""` (empty string) for `nextPageToken`/`prevPageToken` when no more pages, not `null`. `PaginatedResult` normalizes this to `nil`, so use `if let nextPageToken = result.nextPageToken` to check for more pages.
+- **Camera/Bridge status** can be a string or object — handled by `CameraStatusValue`/`BridgeStatusValue` custom decoders.
+- **httpsBaseUrl** in token responses can be a string or `{hostname, port}` object — `TokenResponse` handles both.
 
-```swift
-let events = try await toolkit.events.list(
-    startTimestamp: .gte("2024-01-01T00:00:00.000Z"),
-    actorType: .in(["camera"]),
-    type: .contains("motion")
-)
+## Example App
+
+The `examples/swift-users/` directory contains a complete iOS demo app that demonstrates OAuth login, user profile display, and paginated user listing. It includes:
+
+- WKWebView-based OAuth login flow
+- Profile and Users tabs with SwiftUI
+- XCUITest for automated UI verification
+- Test credential injection for CI
+
+```bash
+# Run UI tests
+cd examples/swift-users
+./run-ui-tests.sh
 ```
-
-Supported operators: `__in`, `__gte`, `__lte`, `__ne`, `__contains`, `__any`.
 
 ## Testing
 
@@ -97,9 +120,102 @@ Unit tests:
 swift test
 ```
 
-Integration tests require a running OAuth proxy and test credentials:
+Integration tests (requires a running OAuth proxy and test credentials):
 ```bash
 ./scripts/run-integration-tests.sh
+```
+
+UI tests for the example app:
+```bash
+cd examples/swift-users && ./run-ui-tests.sh
+```
+
+## Claude Code Agents
+
+This project includes specialized [Claude Code agents](https://docs.anthropic.com/en/docs/claude-code/agents) in `.claude/agents/` that provide domain-specific expertise when working with the SDK. When you use Claude Code in this repository, these agents are automatically available and will be invoked when your task matches their domain.
+
+### Available Agents
+
+| Agent | Color | Trigger | What It Knows |
+|-------|-------|---------|---------------|
+| **een-auth-agent** | Blue | OAuth flows, login/logout, token management, session restore, SwiftUI auth state | `AuthManager`, `AuthState`, `OAuthWebSession`, `TokenStorage`, Keychain patterns |
+| **een-devices-agent** | Orange | Cameras, bridges, device listing, status filtering, include parameters, device selection UI | `CameraService`, `BridgeService`, `Camera`/`Bridge` models, `CameraStatusValue` decoding |
+| **een-events-agent** | Purple | Events, alerts, event types, event metrics, SSE streaming, event thumbnails | `EventService`, `EventMetricService`, `EventSubscriptionService`, `SSEClient`, include schemas |
+| **een-media-agent** | Red | Live/recorded images, media intervals, feeds, stream URLs, HLS | `MediaService`, `FeedService`, image display, timestamp navigation, feed URL includes |
+| **test-runner** | Green | Running unit and integration tests, reporting results | `swift test`, `run-integration-tests.sh`, test filtering, result interpretation |
+
+### How the Agents Work
+
+When you ask Claude Code a question or request a task, it automatically selects the appropriate agent based on context. For example:
+
+- *"How do I show live camera images?"* → **een-media-agent** is invoked with full knowledge of `MediaService`, `GetLiveImageParams`, and SwiftUI image display patterns.
+- *"Query motion events for the last hour"* → **een-events-agent** knows the correct `actor` format (`camera:{id}`), timestamp functions, and include parameters for event thumbnails.
+- *"Add OAuth login to my app"* → **een-auth-agent** guides the full flow: `getAuthUrl()` → WKWebView/ASWebAuthenticationSession → `handleCallback()` → session restore.
+- *"Run the tests"* → **test-runner** executes the test suite and provides a structured report.
+
+Each agent has access to the relevant source files, correct API endpoint paths, and working code examples. They enforce critical rules like always using `formatTimestamp()` (never ISO 8601 `Z` format) and the `camera:{id}` actor prefix for events.
+
+### Using Agents Explicitly
+
+You can also reference agents directly in your prompts:
+
+```
+Use the een-events-agent to help me implement real-time event streaming with SSE.
+```
+
+```
+Use the een-devices-agent to show me how to filter cameras by status and tags.
+```
+
+### Agent File Structure
+
+```
+.claude/agents/
+├── een-auth-agent.md      # OAuth, tokens, session management
+├── een-devices-agent.md   # Cameras and bridges
+├── een-events-agent.md    # Events, alerts, SSE streaming
+├── een-media-agent.md     # Live/recorded images, feeds
+└── test-runner.md         # Test execution and reporting
+```
+
+Each agent file contains:
+- **Frontmatter** — name, description, model, color (used by Claude Code UI)
+- **Examples** — trigger patterns showing when the agent activates
+- **Context Files** — source files the agent reads for accurate guidance
+- **Key Types** — Swift struct/enum definitions for the domain
+- **Code Patterns** — working snippets for common tasks
+- **Constraints** — critical rules and gotchas (pagination, timestamp format, etc.)
+
+## Documentation
+
+Detailed guides are available in `docs/`:
+
+- [Getting Started](docs/getting-started.md) — setup, authentication, first API call
+- [Authentication](docs/authentication.md) — OAuth proxy flow, session restore, logout
+- [API Reference](docs/api-reference.md) — all 16 services with parameters
+- [Events](docs/events.md) — querying, types, includes, SSE streaming
+- [Media](docs/media.md) — live/recorded images, feeds, HLS
+
+## File Structure
+
+```
+Sources/EENApiToolkit/
+  EENApiToolkit.swift          # Main entry point
+  Auth/                        # OAuth, tokens, storage
+  Configuration/               # EENToolkitConfig
+  Core/                        # HTTPClient, errors, pagination, query encoding, timestamps
+  Models/                      # 16 data model files
+  Services/                    # 16 API service files
+  SSE/                         # Server-Sent Events streaming
+Tests/EENApiToolkitTests/
+  Core/                        # Unit tests for core utilities
+  Services/                    # Model decoding tests
+  Integration/                 # Live API tests (require credentials)
+  Mocks/                       # MockURLProtocol
+examples/
+  swift-users/                 # iOS demo app (SwiftUI)
+docs/                          # Developer guides
+.claude/agents/                # Claude Code specialized agents
 ```
 
 ## License
