@@ -20,7 +20,7 @@ public struct EventService: Sendable {
 
     /// List available event types.
     public func listTypes(params: ListEventTypesParams = .init()) async throws -> PaginatedResult<EventType> {
-        try await client.request(Endpoint(path: "/api/v3.0/events:listTypes", queryItems: params.toQueryItems()))
+        try await client.request(Endpoint(path: "/api/v3.0/eventTypes", queryItems: params.toQueryItems()))
     }
 
     /// List possible event field values for a given actor.

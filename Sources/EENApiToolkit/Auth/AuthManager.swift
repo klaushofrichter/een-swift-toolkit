@@ -1,13 +1,54 @@
 import Foundation
 
 /// Response from the proxy's token exchange endpoint.
-public struct TokenResponse: Codable, Sendable {
+/// The `httpsBaseUrl` field can be a string (`"https://api.c021.eagleeyenetworks.com"`)
+/// or an object (`{"hostname":"api.c021.eagleeyenetworks.com","port":443}`).
+public struct TokenResponse: Sendable {
     public let accessToken: String
     public let expiresIn: Int
     public let httpsBaseUrl: String
     public let userEmail: String?
     public let sessionId: String
 }
+
+extension TokenResponse: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case accessToken, expiresIn, httpsBaseUrl, userEmail, sessionId
+    }
+
+    private struct BaseUrlObject: Decodable {
+        let hostname: String
+        let port: Int?
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        accessToken = try container.decode(String.self, forKey: .accessToken)
+        expiresIn = try container.decode(Int.self, forKey: .expiresIn)
+        userEmail = try container.decodeIfPresent(String.self, forKey: .userEmail)
+        sessionId = try container.decode(String.self, forKey: .sessionId)
+
+        // httpsBaseUrl may be a string or an object { hostname, port }
+        if let urlString = try? container.decode(String.self, forKey: .httpsBaseUrl) {
+            httpsBaseUrl = urlString
+        } else if let urlObject = try? container.decode(BaseUrlObject.self, forKey: .httpsBaseUrl) {
+            let port = urlObject.port
+            if let port, port != 443 {
+                httpsBaseUrl = "https://\(urlObject.hostname):\(port)"
+            } else {
+                httpsBaseUrl = "https://\(urlObject.hostname)"
+            }
+        } else {
+            throw DecodingError.typeMismatch(
+                String.self,
+                DecodingError.Context(codingPath: [CodingKeys.httpsBaseUrl],
+                                      debugDescription: "httpsBaseUrl must be a string or {hostname, port} object")
+            )
+        }
+    }
+}
+
+extension TokenResponse: Encodable {}
 
 /// Response from the proxy's token refresh endpoint.
 struct RefreshTokenResponse: Codable, Sendable {
@@ -185,13 +226,16 @@ public actor AuthManager {
     public func revokeToken() async throws {
         let sessionId = await authState.sessionId
 
-        // Always clear local state regardless of revoke outcome
-        defer { Task { await self.clearAuth() } }
-
-        guard let sessionId else { return }
+        guard let sessionId else {
+            await clearAuth()
+            return
+        }
 
         let proxyUrl = normalizedProxyUrl
-        guard let url = URL(string: "\(proxyUrl)/proxy/revoke") else { return }
+        guard let url = URL(string: "\(proxyUrl)/proxy/revoke") else {
+            await clearAuth()
+            return
+        }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -201,6 +245,9 @@ public actor AuthManager {
 
         // Best-effort revoke -- don't throw on failure
         let _ = try? await URLSession.shared.data(for: request)
+
+        // Always clear local state regardless of revoke outcome
+        await clearAuth()
     }
 
     /// Attempt to restore a previous session from persisted storage.

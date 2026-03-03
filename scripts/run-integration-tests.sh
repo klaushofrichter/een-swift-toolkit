@@ -71,7 +71,7 @@ echo ""
 # 4. Run Swift integration tests
 echo -e "${BLUE}4. Running Swift integration tests...${NC}"
 echo ""
-PROXY_URL="$PROXY_URL" swift test --filter Integration 2>&1
+PROXY_URL="$PROXY_URL" swift test --filter LiveServiceTests 2>&1
 TEST_EXIT=$?
 echo ""
 

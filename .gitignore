@@ -2,6 +2,7 @@
 .build/
 .swiftpm/
 *.xcodeproj/
+!examples/**/SwiftUsers.xcodeproj/
 xcuserdata/
 DerivedData/
 Package.resolved

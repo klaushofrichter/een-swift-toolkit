@@ -87,6 +87,11 @@ actor HTTPClient {
         }
         if !endpoint.queryItems.isEmpty {
             components.queryItems = endpoint.queryItems
+            // URLComponents does not percent-encode '+' in query values, but many servers
+            // (including EEN API) parse query strings using form-encoding where '+' means space.
+            // Manually encode '+' as '%2B' to preserve timestamp offsets like +00:00.
+            components.percentEncodedQuery = components.percentEncodedQuery?
+                .replacingOccurrences(of: "+", with: "%2B")
         }
         guard let url = components.url else {
             throw EENError(code: .validationError, message: "Failed to construct URL from components")

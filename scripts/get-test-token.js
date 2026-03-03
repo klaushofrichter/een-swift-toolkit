@@ -127,10 +127,17 @@ async function main() {
   const tokenData = await exchangeCode(code)
   console.log(`Got access token for ${tokenData.userEmail || 'unknown'}`)
 
+  // httpsBaseUrl may be a string or an object like { hostname, port }
+  let baseUrl = tokenData.httpsBaseUrl
+  if (typeof baseUrl === 'object' && baseUrl !== null && baseUrl.hostname) {
+    const port = baseUrl.port && baseUrl.port !== 443 ? `:${baseUrl.port}` : ''
+    baseUrl = `https://${baseUrl.hostname}${port}`
+  }
+
   const credentials = {
     accessToken: tokenData.accessToken,
     sessionId: tokenData.sessionId,
-    httpsBaseUrl: tokenData.httpsBaseUrl,
+    httpsBaseUrl: baseUrl,
     userEmail: tokenData.userEmail,
     expiresIn: tokenData.expiresIn
   }
