@@ -3,6 +3,16 @@ import AVFoundation
 import Combine
 import EENApiToolkit
 
+enum AppError: LocalizedError {
+    case noHLSUrl
+
+    var errorDescription: String? {
+        switch self {
+        case .noHLSUrl: return "No HLS URL available for this camera"
+        }
+    }
+}
+
 enum ConnectionState: Equatable {
     case scanning
     case connecting
@@ -70,6 +80,17 @@ class AppState: ObservableObject {
 
     init(toolkit: EENToolkit) {
         self.toolkit = toolkit
+    }
+
+    deinit {
+        tokenTimer?.invalidate()
+        sseConnection?.close()
+        hlsPlayer?.pause()
+        playerObservation?.invalidate()
+        if let subId = subscriptionId {
+            let tk = toolkit
+            Task { try? await tk.eventSubscriptions.delete(id: subId) }
+        }
     }
 
     // MARK: - QR Code Flow
@@ -168,39 +189,44 @@ class AppState: ObservableObject {
 
     private func startConnection() {
         Task {
-            do {
-                // Fetch camera info, event types, and HLS URL concurrently
-                async let cameraFetch = toolkit.cameras.get(id: cameraId)
-                async let typesFetch = toolkit.events.listFieldValues(actor: "camera:\(cameraId)")
-                async let feedsFetch = fetchHLSUrl()
+            // Media session init is best-effort (may not exist on all API versions)
+            Task { try? await toolkit.media.initMediaSession(deviceId: cameraId) }
 
-                // Media session init is best-effort (may not exist on all API versions)
-                Task { try? await toolkit.media.initMediaSession(deviceId: cameraId) }
-
-                let camera = try await cameraFetch
-                self.cameraName = camera.name
-
-                let fieldValues = try await typesFetch
-                let fetchedTypes = fieldValues.type
-                self.availableEventTypes = fetchedTypes.sorted()
-
+            await connectCamera { fetchedTypes in
                 if eventHashes.isEmpty {
-                    self.activeEventTypes = fetchedTypes
-                } else {
-                    let lookup = EventTypeHash.buildLookup(fetchedTypes)
-                    let resolved = EventTypeHash.resolve(hashString: eventHashes, lookup: lookup)
-                    self.activeEventTypes = resolved.isEmpty ? fetchedTypes : resolved
+                    return fetchedTypes
                 }
-
-                let hlsUrl = try await feedsFetch
-                setupHLSPlayer(hlsUrl: hlsUrl)
-
-                await startSSESubscription()
-
-                self.connectionState = .live
-            } catch {
-                self.connectionState = .error(error.localizedDescription)
+                let lookup = EventTypeHash.buildLookup(fetchedTypes)
+                let resolved = EventTypeHash.resolve(hashString: eventHashes, lookup: lookup)
+                return resolved.isEmpty ? fetchedTypes : resolved
             }
+        }
+    }
+
+    /// Shared connection logic used by both `startConnection()` and `switchCamera()`.
+    /// The `selectActiveTypes` closure receives the fetched event types and returns the active set.
+    private func connectCamera(selectActiveTypes: ([String]) -> [String]) async {
+        do {
+            async let cameraFetch = toolkit.cameras.get(id: cameraId)
+            async let typesFetch = toolkit.events.listFieldValues(actor: "camera:\(cameraId)")
+            async let feedsFetch = fetchHLSUrl()
+
+            let camera = try await cameraFetch
+            self.cameraName = camera.name
+
+            let fieldValues = try await typesFetch
+            let fetchedTypes = fieldValues.type
+            self.availableEventTypes = fetchedTypes.sorted()
+            self.activeEventTypes = selectActiveTypes(fetchedTypes)
+
+            let hlsUrl = try await feedsFetch
+            setupHLSPlayer(hlsUrl: hlsUrl)
+
+            await startSSESubscription()
+
+            self.connectionState = .live
+        } catch {
+            self.connectionState = .error(error.localizedDescription)
         }
     }
 
@@ -211,7 +237,7 @@ class AppState: ObservableObject {
         params.include = ["hlsUrl"]
         let feeds = try await toolkit.feeds.list(params: params)
         guard let hlsUrl = feeds.results.first?.hlsUrl else {
-            throw NSError(domain: "AppState", code: -1, userInfo: [NSLocalizedDescriptionKey: "No HLS URL available for this camera"])
+            throw AppError.noHLSUrl
         }
         return hlsUrl
     }
@@ -353,18 +379,16 @@ class AppState: ObservableObject {
             params.sort = "-startTimestamp"
 
             let result = try await toolkit.events.list(params: params)
-            for apiEvent in result.results {
-                let description = EventTypeHash.eventDescription(type: apiEvent.type, startTimestamp: apiEvent.startTimestamp)
-                let date = EventTypeHash.isoFormatter.date(from: apiEvent.startTimestamp) ?? Date()
-                let event = CameraEvent(
+            let historyEvents = result.results.map { apiEvent in
+                CameraEvent(
                     type: apiEvent.type,
                     actorId: apiEvent.actorId,
-                    description: description,
-                    timestamp: date,
+                    description: EventTypeHash.eventDescription(type: apiEvent.type, startTimestamp: apiEvent.startTimestamp),
+                    timestamp: EventTypeHash.isoFormatter.date(from: apiEvent.startTimestamp) ?? Date(),
                     eventId: apiEvent.id
                 )
-                insertEvent(event)
             }
+            mergeEvents(historyEvents)
         } catch {
             self.events.insert(CameraEvent(
                 type: "sse_error",
@@ -398,29 +422,9 @@ class AppState: ObservableObject {
         let previousActiveTypes = activeEventTypes
 
         Task {
-            do {
-                async let cameraFetch = toolkit.cameras.get(id: newCameraId)
-                async let typesFetch = toolkit.events.listFieldValues(actor: "camera:\(newCameraId)")
-                async let feedsFetch = fetchHLSUrl()
-
-                let camera = try await cameraFetch
-                self.cameraName = camera.name
-
-                let fieldValues = try await typesFetch
-                let fetchedTypes = fieldValues.type
-                self.availableEventTypes = fetchedTypes.sorted()
-
+            await connectCamera { fetchedTypes in
                 let intersection = previousActiveTypes.filter { fetchedTypes.contains($0) }
-                self.activeEventTypes = intersection.isEmpty ? fetchedTypes : intersection
-
-                let hlsUrl = try await feedsFetch
-                setupHLSPlayer(hlsUrl: hlsUrl)
-
-                await startSSESubscription()
-
-                self.connectionState = .live
-            } catch {
-                self.connectionState = .error(error.localizedDescription)
+                return intersection.isEmpty ? fetchedTypes : intersection
             }
         }
     }
@@ -483,6 +487,27 @@ class AppState: ObservableObject {
                 events.removeLast()
             }
         }
+    }
+
+    /// Batch-merge events into the list with a single @Published mutation.
+    private func mergeEvents(_ newEvents: [CameraEvent]) {
+        guard !newEvents.isEmpty else { return }
+        var merged = events
+        let existingIds = Set(merged.compactMap(\.eventId))
+        for event in newEvents {
+            if let eventId = event.eventId, existingIds.contains(eventId) {
+                if let idx = merged.firstIndex(where: { $0.eventId == eventId }) {
+                    merged[idx] = event
+                }
+            } else {
+                let insertIndex = merged.firstIndex(where: { $0.timestamp < event.timestamp }) ?? merged.endIndex
+                merged.insert(event, at: insertIndex)
+            }
+        }
+        if merged.count > 100 {
+            merged = Array(merged.prefix(100))
+        }
+        events = merged
     }
 
     func reset() {

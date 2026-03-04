@@ -62,19 +62,39 @@ Example apps have their own test targets run via xcodebuild, not `swift test`:
 - `scripts/ensure-proxy.sh` — Auto-starts the mobile proxy if not running (kills stale port occupants)
 - Credentials stored temporarily in `test-credentials.json` (cleaned up after tests)
 
+## What "Run All Tests" Means
+
+When the user asks to "run all tests" or "run the full test suite", execute ALL of the following steps sequentially. Do not skip the E2E/UI tests — they are part of the full suite.
+
 ## Test Execution Protocol
 
-### Step 1: Run Unit Tests
+**IMPORTANT**: All test suites must run sequentially — never in parallel. SPM tests and xcodebuild tests share DerivedData and will cause "database is locked" errors if run concurrently.
+
+### Step 0: Ensure Proxy Is Running
+
+All integration and E2E tests require the EEN mobile proxy. Always start with:
+
 ```bash
-cd EENApiToolkit && swift test --filter "EENApiToolkitTests" 2>&1
+cd EENApiToolkit && ./scripts/ensure-proxy.sh
 ```
+
+This checks if the proxy is responding at `PROXY_URL` (default `http://127.0.0.1:3333`), and if not, starts it in the background from `../../een-mobile-proxy/proxy/` via `npm run dev`. It waits up to 30s for readiness, kills stale port occupants, and writes PID to `.proxy.pid`. Safe to call repeatedly — exits immediately if proxy is already running.
+
+**Manual alternative**: `cd ../../een-mobile-proxy/proxy && npm run dev`
+
+### Step 1: Run SPM Unit Tests
+```bash
+cd EENApiToolkit && swift test 2>&1
+```
+This runs both unit tests and integration tests (integration tests will use credentials from `test-credentials.json` if available, or skip gracefully).
+
 Capture and analyze:
 - Total tests run
 - Passed/failed/skipped counts
 - Specific failure messages
 - Test file locations for failures
 
-### Step 2: Run Integration Tests (if requested)
+### Step 2: Run SPM Integration Tests
 ```bash
 cd EENApiToolkit && ./scripts/run-integration-tests.sh 2>&1
 ```
@@ -82,31 +102,30 @@ This script:
 1. Ensures the OAuth proxy is running via `scripts/ensure-proxy.sh`
 2. Installs Node dependencies if needed
 3. Acquires test credentials via Playwright
-4. Runs `swift test --filter Integration`
+4. Runs `swift test --filter LiveServiceTests`
 5. Cleans up credentials file
 
-### Step 3: Run Xcode Project Tests (if applicable)
-
-**ObservationCompanion unit tests** (no proxy needed):
+### Step 3: Run ObservationCompanion E2E Tests
 ```bash
-cd examples/ObservationCompanion && xcodebuild test \
-    -project ObservationCompanion.xcodeproj \
-    -scheme ObservationCompanion \
-    -destination "id=$SIMULATOR_ID" \
-    -only-testing:ObservationCompanionTests 2>&1
+cd EENApiToolkit/examples/ObservationCompanion && ./run-e2e-tests.sh 2>&1
 ```
+This script:
+1. Ensures proxy is running
+2. Acquires credentials via Playwright
+3. Discovers a camera ID via the API
+4. Finds/boots an iOS simulator
+5. Runs `xcodebuild test -only-testing:ObservationCompanionUITests`
+6. Cleans up credential files
 
-**ObservationCompanion E2E tests** (requires proxy + credentials):
+**Note**: This also compiles and runs the ObservationCompanion unit tests (`ObservationCompanionTests`) as part of the build. Takes 2-5 minutes (token acquisition + simulator boot + ~30s per live test).
+
+### Step 4: Run SwiftUsers UI Tests
 ```bash
-cd examples/ObservationCompanion && ./run-e2e-tests.sh
+cd EENApiToolkit/examples/swift-users && ./run-ui-tests.sh 2>&1
 ```
+This script follows the same pattern: proxy, credentials, simulator, xcodebuild.
 
-**SwiftUsers UI tests** (requires proxy + credentials):
-```bash
-cd examples/swift-users && ./run-ui-tests.sh
-```
-
-### Step 4: Generate Test Report
+### Step 5: Generate Test Report
 
 Produce a structured report:
 
@@ -114,11 +133,11 @@ Produce a structured report:
 ```
 TEST SUMMARY
 ================
-SPM Unit Tests:           X passed | Y failed | Z skipped
-SPM Integration Tests:    X passed | Y failed | Z skipped
-Xcode Unit Tests:         X passed | Y failed | Z skipped
-Xcode E2E Tests:          X passed | Y failed | Z skipped
-Overall:                  ALL PASSING or FAILURES DETECTED
+SPM Unit Tests:                    X passed | Y failed | Z skipped
+SPM Integration Tests:             X passed | Y failed | Z skipped
+ObservationCompanion E2E Tests:    X passed | Y failed | Z skipped
+SwiftUsers UI Tests:               X passed | Y failed | Z skipped
+Overall:                           ALL PASSING or FAILURES DETECTED
 ```
 
 #### Failure Details (if any)
@@ -137,10 +156,11 @@ If failures exist:
 ## Execution Rules
 
 1. **Never modify code** — Observation and reporting only
-2. **Run all tests** — Do not skip suites unless explicitly broken
+2. **Run all tests** — When "all tests" is requested, run all 4 steps above. Do not skip E2E/UI tests.
 3. **Capture all output** — Preserve error messages and stack traces
 4. **Be thorough** — Run tests to completion even if early failures occur
 5. **Report accurately** — Report what you observe, do not speculate about fixes
+6. **Run sequentially** — Never run SPM and xcodebuild tests in parallel
 
 ## Handling Special Cases
 
@@ -148,23 +168,25 @@ If failures exist:
 - Check for Swift compilation errors (`swift build` first)
 - Report the build error clearly
 
-### If integration tests require the proxy:
-- The mobile proxy must be running at `PROXY_URL` (default `http://127.0.0.1:3333`)
-- Use `scripts/ensure-proxy.sh` to auto-start it, or manually: `cd ../../een-mobile-proxy/proxy && npm run dev`
-
-### If running multiple test suites:
-- **Never run SPM tests and Xcode project tests in parallel** — they share DerivedData and cause "database is locked" build errors
-- Run them sequentially: SPM tests first, then Xcode unit tests, then E2E tests
-- E2E tests take 2-5 minutes (token acquisition + simulator boot + 30s per live test)
+### If running only unit tests (no live API):
+- SPM unit tests: `swift test --filter "EENApiToolkitTests"` (skips integration)
+- ObservationCompanion unit tests only need xcodebuild with `-only-testing:ObservationCompanionTests`
 
 ### If tests hang or timeout:
-- Allow 2 minutes for unit tests, 5 minutes for integration tests
+- Allow 2 minutes for unit tests, 5 minutes for integration tests, 5 minutes per E2E suite
 - Report timeout with last observed activity
 
 ### Common Integration Test Issues:
 - **401 errors**: Token may be stale; proxy may need restart
 - **Timestamp errors**: Verify `+` is percent-encoded as `%2B`
 - **Missing event types**: Some event types vary by account; tests use dynamic discovery
+
+### Common E2E Test Issues:
+- **"database is locked"**: Running tests in parallel — always run sequentially
+- **"server died" / simulator crash**: Restart simulator: `xcrun simctl shutdown $ID && xcrun simctl boot $ID`
+- **Tests skip with "no credentials"**: xcodebuild may not forward env vars — the run scripts use file-based credential injection to avoid this
+- **LiveView timeout**: HLS stream connection can take up to 30s; tests use 30s timeouts for video-dependent assertions
+- **Element not found**: Check SwiftUI accessibility identifiers — containers need `.accessibilityElement(children: .contain)`
 
 ## Output Format
 

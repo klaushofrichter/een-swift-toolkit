@@ -458,10 +458,9 @@ struct AppStateResetTests {
 @Suite("AppState Event Management")
 struct AppStateEventManagementTests {
 
-    @Test("configureQRCode inserts events in timestamp order via handleViewerURL")
-    @MainActor func eventsOrdered() {
+    @Test("configureQRCode sets connecting state with empty events")
+    @MainActor func configureQRCodeState() {
         let state = makeAppState()
-        // Use configureQRCode directly to set up state, then manually test insertEvent behavior
         state.configureQRCode(token: "tok", cameraId: "cam1", baseUrl: "https://api.example.com")
         #expect(state.connectionState == .connecting)
         #expect(state.events.isEmpty)

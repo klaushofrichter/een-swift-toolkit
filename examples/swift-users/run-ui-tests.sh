@@ -3,8 +3,8 @@
 # Run SwiftUsers XCUITests on the iOS Simulator.
 #
 # Acquires OAuth credentials via the existing get-test-token.js script,
-# then runs the UI test suite with those credentials injected via
-# environment variables.
+# writes a credentials file for the XCUITest to read (file-based injection),
+# then runs the UI test suite.
 #
 # Usage:
 #   ./run-ui-tests.sh
@@ -12,7 +12,7 @@
 #   SIMULATOR_ID=XXXX ./run-ui-tests.sh
 #
 # Prerequisites:
-#   - Mobile proxy running (locally: cd ../../../../een-mobile-proxy/proxy && npm run dev)
+#   - Mobile proxy running (or auto-started by ensure-proxy.sh)
 #   - Node.js + npm installed (for Playwright token acquisition)
 #   - Xcode + iOS Simulator available
 
@@ -33,6 +33,10 @@ cleanup() {
         rm -f "$CREDENTIALS_FILE"
         echo -e "${BLUE}Cleaned up${NC} $CREDENTIALS_FILE"
     fi
+    if [ -f "$SCRIPT_DIR/ui-test-credentials.json" ]; then
+        rm -f "$SCRIPT_DIR/ui-test-credentials.json"
+        echo -e "${BLUE}Cleaned up${NC} ui-test-credentials.json"
+    fi
 }
 trap cleanup EXIT
 
@@ -42,17 +46,12 @@ echo -e "${BLUE}============================================${NC}"
 echo "Proxy: $PROXY_URL"
 echo ""
 
-# ── 1. Check proxy ──────────────────────────────────────────────────────
-echo -e "${BLUE}1. Checking proxy...${NC}"
-if ! curl -sf "$PROXY_URL/proxy/version" > /dev/null 2>&1; then
-    echo -e "${RED}Error:${NC} Proxy not reachable at $PROXY_URL"
-    echo "Start it with: cd ../../../../een-mobile-proxy/proxy && npm run dev"
-    exit 1
-fi
-echo -e "${GREEN}Proxy is running${NC}"
+# -- 1. Ensure proxy is running
+echo -e "${BLUE}1. Ensuring proxy is running...${NC}"
+"$TOOLKIT_ROOT/scripts/ensure-proxy.sh"
 echo ""
 
-# ── 2. Check Node dependencies ──────────────────────────────────────────
+# -- 2. Check Node dependencies
 echo -e "${BLUE}2. Checking Node dependencies...${NC}"
 cd "$TOOLKIT_ROOT"
 if [ ! -d "node_modules" ]; then
@@ -63,7 +62,7 @@ fi
 echo -e "${GREEN}Dependencies ready${NC}"
 echo ""
 
-# ── 3. Acquire test credentials ─────────────────────────────────────────
+# -- 3. Acquire test credentials
 echo -e "${BLUE}3. Acquiring test credentials...${NC}"
 PROXY_URL="$PROXY_URL" node scripts/get-test-token.js
 if [ ! -f "$CREDENTIALS_FILE" ]; then
@@ -71,22 +70,27 @@ if [ ! -f "$CREDENTIALS_FILE" ]; then
     exit 1
 fi
 echo -e "${GREEN}Credentials acquired${NC}"
+
+# Write ui-test-credentials.json for XCUITest to read via #filePath
+UI_CREDS_FILE="$SCRIPT_DIR/ui-test-credentials.json"
+python3 -c "
+import json
+creds = json.load(open('$CREDENTIALS_FILE'))
+# Ensure expiresIn is a string for consistent parsing
+creds['expiresIn'] = str(creds.get('expiresIn', 3600))
+with open('$UI_CREDS_FILE', 'w') as f:
+    json.dump(creds, f, indent=2)
+"
+echo -e "${GREEN}Credentials file written${NC} for XCUITest"
 echo ""
 
-# Parse credentials into environment variables
-export TEST_TOKEN=$(python3 -c "import json; print(json.load(open('$CREDENTIALS_FILE'))['accessToken'])")
-export TEST_BASE_URL=$(python3 -c "import json; print(json.load(open('$CREDENTIALS_FILE'))['httpsBaseUrl'])")
-export TEST_SESSION_ID=$(python3 -c "import json; print(json.load(open('$CREDENTIALS_FILE'))['sessionId'])")
-export TEST_EXPIRES_IN=$(python3 -c "import json; print(json.load(open('$CREDENTIALS_FILE'))['expiresIn'])")
-export TEST_USER_EMAIL=$(python3 -c "import json; print(json.load(open('$CREDENTIALS_FILE')).get('userEmail',''))")
-
-# ── 4. Find simulator ───────────────────────────────────────────────────
+# -- 4. Find simulator
 echo -e "${BLUE}4. Finding simulator...${NC}"
 if [ -n "${SIMULATOR_ID:-}" ]; then
     SIMULATOR="$SIMULATOR_ID"
     echo "Using provided SIMULATOR_ID=$SIMULATOR"
 else
-    # Pick a simulator: prefer booted iPhone on iOS 18.x, then any available iPhone on iOS 18.x
+    # Pick a simulator: prefer booted iPhone, then any available iPhone
     SIMULATOR=$(xcrun simctl list devices available -j \
         | python3 -c "
 import json, sys
@@ -96,28 +100,19 @@ available = []
 for runtime, devices in sorted(data['devices'].items(), reverse=True):
     if 'iOS' not in runtime:
         continue
-    # Prefer iOS 18.x for compatibility
-    is_18 = 'iOS-18' in runtime or 'iOS 18' in runtime
     for d in devices:
         if not d.get('isAvailable', False):
             continue
         if 'iPhone' not in d.get('name', ''):
             continue
-        entry = (d['udid'], is_18)
+        entry = d['udid']
         if d.get('state') == 'Booted':
             booted.append(entry)
         else:
             available.append(entry)
-# Prefer booted iOS 18, then any booted, then available iOS 18, then any
-for lst in [booted, available]:
-    for udid, is18 in lst:
-        if is18:
-            print(udid)
-            sys.exit(0)
-for lst in [booted, available]:
-    for udid, is18 in lst:
-        print(udid)
-        sys.exit(0)
+for udid in booted + available:
+    print(udid)
+    sys.exit(0)
 " 2>/dev/null || true)
 
     if [ -z "$SIMULATOR" ]; then
@@ -125,7 +120,6 @@ for lst in [booted, available]:
         exit 1
     fi
 
-    # Boot the simulator if not already booted
     STATE=$(xcrun simctl list devices -j | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
@@ -153,7 +147,7 @@ for runtime, devices in data['devices'].items():
 fi
 echo ""
 
-# ── 5. Run UI tests ─────────────────────────────────────────────────────
+# -- 5. Run UI tests
 echo -e "${BLUE}5. Running UI tests...${NC}"
 echo ""
 
@@ -166,14 +160,13 @@ xcodebuild test \
     -destination "id=$SIMULATOR" \
     -only-testing:SwiftUsersUITests \
     2>&1 | tee /tmp/uitest-output.log \
-    | grep -E '(Test Case|Test suite|Executed|passed|failed|\*\* TEST)'
-# Capture xcodebuild's exit code from PIPESTATUS
+    | grep -E '(Test Case|Test suite|Executed|passed|failed|skipped|\*\* TEST)'
 TEST_EXIT=${PIPESTATUS[0]}
 set -e
 
 echo ""
 
-# ── 6. Report result ────────────────────────────────────────────────────
+# -- 6. Report result
 echo -e "${BLUE}============================================${NC}"
 if [ $TEST_EXIT -eq 0 ]; then
     echo -e "${GREEN}All UI tests passed!${NC}"
