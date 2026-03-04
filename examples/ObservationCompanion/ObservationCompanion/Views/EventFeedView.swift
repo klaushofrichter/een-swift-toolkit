@@ -39,6 +39,7 @@ struct EventFeedView: View {
                             .foregroundColor(.blue)
                     }
                 }
+                .accessibilityIdentifier("EventFilterButton")
                 Spacer()
                 if hasNewEvents {
                     Button {
@@ -58,6 +59,7 @@ struct EventFeedView: View {
                         .frame(width: 32, height: 32)
                         .contentShape(Rectangle())
                 }
+                .accessibilityIdentifier("EventRefreshButton")
                 Button {
                     appState.isMuted.toggle()
                     if !appState.isMuted {
@@ -70,14 +72,18 @@ struct EventFeedView: View {
                         .frame(width: 32, height: 32)
                         .contentShape(Rectangle())
                 }
+                .accessibilityIdentifier("EventMuteButton")
                 Text("\(displayedEvents.count)")
                     .font(.caption)
                     .foregroundColor(.gray)
                     .monospacedDigit()
+                    .accessibilityIdentifier("EventCount")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(Color.black.opacity(0.9))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("EventFeedHeader")
 
             Divider()
                 .background(Color.gray.opacity(0.3))
@@ -98,6 +104,7 @@ struct EventFeedView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.black.opacity(0.8))
+                .accessibilityIdentifier("WaitingForEvents")
             } else {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: true) {
@@ -115,6 +122,7 @@ struct EventFeedView: View {
                         }
                     }
                     .background(Color.black.opacity(0.8))
+                    .accessibilityIdentifier("EventList")
                     .onChange(of: hasNewEvents) {
                         if !hasNewEvents {
                             withAnimation {

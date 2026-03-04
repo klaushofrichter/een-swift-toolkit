@@ -18,13 +18,15 @@ struct ScannerView: View {
     private static let minRemainingTTL: TimeInterval = 300
 
     var body: some View {
-        Group {
+        ZStack {
             if verticalSizeClass == .compact {
                 landscapeLayout
             } else {
                 portraitLayout
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("ScannerView")
         .onAppear { refreshSavedURL() }
         .sheet(isPresented: $showOAuthSheet) {
             oauthSheet
@@ -209,6 +211,7 @@ struct ScannerView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
             .padding(.horizontal, 40)
+            .accessibilityIdentifier("OAuthLoginButton")
 
             if let error = oauthError {
                 Text(error)
@@ -342,7 +345,7 @@ struct DataScannerRepresentable: UIViewControllerRepresentable {
                 switch item {
                 case .barcode(let barcode):
                     if let value = barcode.payloadStringValue,
-                       value.hasPrefix("eenobserve://") || value.hasPrefix("eenviewer://") {
+                       value.hasPrefix("eenobserve://") {
                         hasScanned = true
                         dataScanner.stopScanning()
                         onScan(value)

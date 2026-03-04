@@ -1,10 +1,12 @@
 import SwiftUI
+import EENApiToolkit
 
 struct MainContentView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var isVideoFullscreen = false
     @State private var showCameraPicker = false
+    @State private var showLogoutConfirmation = false
 
     @ViewBuilder
     private var videoOrPlaceholder: some View {
@@ -41,6 +43,8 @@ struct MainContentView: View {
                                 .monospaced()
                         }
                     }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("ConnectingView")
 
                 case .live:
                     VStack(spacing: 0) {
@@ -65,16 +69,22 @@ struct MainContentView: View {
                                         .foregroundColor(.gray)
                                 }
                             }
+                            .accessibilityIdentifier("CameraNameButton")
                             Spacer()
                             TokenCountdownView()
                             Button {
-                                appState.reset()
+                                if appState.authMode == .oauth {
+                                    showLogoutConfirmation = true
+                                } else {
+                                    appState.reset()
+                                }
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .font(.title2)
                                     .foregroundColor(.gray)
                             }
                             .padding(.leading, 8)
+                            .accessibilityIdentifier("CloseButton")
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
@@ -97,6 +107,8 @@ struct MainContentView: View {
                             EventFeedView()
                         }
                     }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("LiveView")
 
                 case .expired:
                     VStack(spacing: 20) {
@@ -115,7 +127,10 @@ struct MainContentView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.blue)
+                        .accessibilityIdentifier("StartOverButton")
                     }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("ExpiredView")
 
                 case .error(let message):
                     VStack(spacing: 20) {
@@ -135,7 +150,10 @@ struct MainContentView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.blue)
+                        .accessibilityIdentifier("TryAgainButton")
                     }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("ErrorView")
                 }
             }
             .navigationBarHidden(true)
@@ -147,6 +165,17 @@ struct MainContentView: View {
         }
         .sheet(isPresented: $showCameraPicker) {
             CameraPickerSheet()
+        }
+        .alert("Sign Out", isPresented: $showLogoutConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Sign Out", role: .destructive) {
+                Task {
+                    try? await appState.toolkit.auth.revokeToken()
+                    appState.reset()
+                }
+            }
+        } message: {
+            Text("You will need to sign in again to reconnect.")
         }
     }
 }

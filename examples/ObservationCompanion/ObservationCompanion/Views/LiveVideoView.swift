@@ -23,6 +23,7 @@ struct LiveVideoView: View {
                             .foregroundColor(.gray)
                             .font(.caption)
                     }
+                    .accessibilityIdentifier("StreamLoadingView")
                 }
 
                 if let error = appState.videoError {
@@ -39,6 +40,7 @@ struct LiveVideoView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 20)
                     }
+                    .accessibilityIdentifier("StreamErrorView")
                 }
 
                 if appState.isVideoPlaying {
@@ -47,7 +49,7 @@ struct LiveVideoView: View {
                             Spacer()
                             HStack(spacing: 4) {
                                 Circle()
-                                    .fill(Color.red)
+                                    .fill(Color.green)
                                     .frame(width: 8, height: 8)
                                 Text("LIVE HD")
                                     .font(.caption2)
@@ -59,6 +61,7 @@ struct LiveVideoView: View {
                             .background(Color.black.opacity(0.6))
                             .clipShape(Capsule())
                             .padding(8)
+                            .accessibilityIdentifier("LiveBadge")
                         }
                         Spacer()
                     }
