@@ -98,7 +98,9 @@ All services use `async throws` and return `Codable`, `Sendable`, `Identifiable`
 - **Camera/Bridge status** can be a string or object — handled by `CameraStatusValue`/`BridgeStatusValue` custom decoders.
 - **httpsBaseUrl** in token responses can be a string or `{hostname, port}` object — `TokenResponse` handles both.
 
-## Example App
+## Example Apps
+
+### swift-users
 
 The `examples/swift-users/` directory contains a complete iOS demo app that demonstrates OAuth login, user profile display, and paginated user listing. It includes:
 
@@ -113,19 +115,50 @@ cd examples/swift-users
 ./run-ui-tests.sh
 ```
 
+### ObservationCompanion
+
+The `examples/ObservationCompanion/` directory contains an iOS app for real-time camera event monitoring. It supports two auth modes:
+
+- **QR Code flow** — scan a deep link (`eenobserve://viewer?token=...&cam=...&base=...`) for token injection
+- **OAuth flow** — full OAuth login via the mobile proxy
+
+Features: live HLS video, SSE event streaming, event type filtering, token countdown, camera switching.
+
+Unit tests cover EventTypeHash, CameraEvent, AppState URL parsing, state management, and token countdown logic:
+
+```bash
+# Run via Xcode (requires simulator)
+xcodebuild test -project examples/ObservationCompanion/ObservationCompanion.xcodeproj \
+  -scheme ObservationCompanion \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+```
+
 ## Testing
 
-Unit tests:
+Unit tests (SDK):
 ```bash
 swift test
 ```
 
-Integration tests (requires a running OAuth proxy and test credentials):
+Integration tests (requires mobile proxy running at `127.0.0.1:3333` and test credentials):
 ```bash
+# 1. Start the mobile proxy
+cd ../../een-mobile-proxy/proxy && npm run dev
+
+# 2. Run integration tests (acquires token via Playwright, then runs swift test)
 ./scripts/run-integration-tests.sh
 ```
 
-UI tests for the example app:
+The token acquisition script (`scripts/get-test-token.js`) automates OAuth login using Playwright and writes `test-credentials.json`. It reads `TEST_USER` and `TEST_PASSWORD` from `../../een-mobile-proxy/proxy/.dev.vars`.
+
+ObservationCompanion unit tests:
+```bash
+xcodebuild test -project examples/ObservationCompanion/ObservationCompanion.xcodeproj \
+  -scheme ObservationCompanion \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+```
+
+UI tests for swift-users example:
 ```bash
 cd examples/swift-users && ./run-ui-tests.sh
 ```
@@ -213,7 +246,8 @@ Tests/EENApiToolkitTests/
   Integration/                 # Live API tests (require credentials)
   Mocks/                       # MockURLProtocol
 examples/
-  swift-users/                 # iOS demo app (SwiftUI)
+  swift-users/                 # iOS demo app (SwiftUI, OAuth login, user listing)
+  ObservationCompanion/        # iOS camera event monitor (QR code + OAuth, live video, SSE)
 docs/                          # Developer guides
 .claude/agents/                # Claude Code specialized agents
 ```

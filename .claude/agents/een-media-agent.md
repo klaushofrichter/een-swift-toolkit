@@ -254,6 +254,68 @@ Make it best-effort (non-fatal) so it doesn't block the connection flow:
 Task { try? await toolkit.media.initMediaSession(deviceId: cameraId) }
 ```
 
+## HLS Live Streaming with AVPlayer
+
+For live video playback (not just snapshots), use HLS feed URLs with AVPlayer:
+
+```swift
+import AVKit
+
+@MainActor
+class LiveVideoViewModel: ObservableObject {
+    @Published var player: AVPlayer?
+    @Published var isVideoPlaying = false
+
+    func startStreaming(toolkit: EENToolkit, cameraId: String) async {
+        // 1. Init media session (best-effort)
+        Task { try? await toolkit.media.initMediaSession(deviceId: cameraId) }
+
+        // 2. Get HLS URL from feeds
+        var params = ListFeedsParams()
+        params.deviceId = cameraId
+        params.type = .preview  // or .main for full resolution
+        params.include = ["hlsUrl"]
+
+        let feeds = try? await toolkit.feeds.list(params: params)
+        guard let hlsUrl = feeds?.results.first?.hlsUrl,
+              let url = URL(string: hlsUrl) else { return }
+
+        // 3. Start AVPlayer
+        let player = AVPlayer(url: url)
+        self.player = player
+        player.play()
+
+        // 4. Observe playback status for UI badges
+        observePlaybackStatus(player)
+    }
+
+    private func observePlaybackStatus(_ player: AVPlayer) {
+        // Use KVO or Combine to track when video actually starts playing
+        // Set isVideoPlaying = true when timeControlStatus == .playing
+    }
+}
+```
+
+### Video Playback State Tracking
+
+Track `isVideoPlaying` to show UI indicators like a "LIVE HD" badge:
+
+```swift
+// In your view:
+if viewModel.isVideoPlaying {
+    HStack(spacing: 4) {
+        Circle().fill(Color.green).frame(width: 8, height: 8)
+        Text("LIVE HD").font(.caption2).fontWeight(.bold)
+    }
+    .padding(.horizontal, 8).padding(.vertical, 4)
+    .background(Color.black.opacity(0.6))
+    .clipShape(Capsule())
+}
+```
+
+**Testing note:** Video playback on the simulator takes time (HLS must connect, buffer, and start).
+Use 30s timeouts in XCUITests for video-dependent assertions. See `een-swifttest-agent` for E2E test patterns.
+
 ## Constraints
 - Live and recorded image methods return raw `Data` (JPEG bytes), not base64.
 - Always use `formatTimestamp()` for timestamp parameters.
@@ -262,3 +324,4 @@ Task { try? await toolkit.media.initMediaSession(deviceId: cameraId) }
 - The `listMedia` endpoint uses `startTimestamp__gte` (filter suffix), not bare `startTimestamp`.
 - Media session initialization may not be available on all API versions — make it best-effort.
 - **Pagination:** The EEN API returns `""` (empty string) for `nextPageToken` when no more pages exist. `PaginatedResult` normalizes this to `nil`, so use `if let nextPageToken = result.nextPageToken` to check for more pages.
+- **HLS playback on simulator**: Allow 30s for video to start playing. The stream must connect, buffer, and begin decoding before `timeControlStatus` becomes `.playing`.

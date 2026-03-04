@@ -74,10 +74,8 @@ class AppState: ObservableObject {
 
     // MARK: - QR Code Flow
 
-    private static let acceptedSchemes = [AppConfig.urlScheme, "eenviewer"]
-
     func handleViewerURL(_ url: URL) {
-        guard let scheme = url.scheme, Self.acceptedSchemes.contains(scheme) else {
+        guard url.scheme == AppConfig.urlScheme else {
             connectionState = .error("Invalid URL scheme: \(url.scheme ?? "nil")")
             return
         }
@@ -139,6 +137,15 @@ class AppState: ObservableObject {
         self.authMode = .oauth
         self.connectionState = .connecting
         self.events = []
+
+        // Start token countdown from OAuth token expiration
+        if let expiration = toolkit.authState.tokenExpiration {
+            let ttl = expiration.timeIntervalSinceNow
+            if ttl > 0 {
+                self.tokenTTL = ttl
+                startTokenCountdown(expiresAt: expiration)
+            }
+        }
 
         // Select first available camera
         Task {
@@ -442,6 +449,16 @@ class AppState: ObservableObject {
     private func updateTokenRemaining(expiresAt: Date) {
         let remaining = Int(expiresAt.timeIntervalSinceNow)
         if remaining <= 0 {
+            // In OAuth mode, the toolkit auto-refreshes the token — check for new expiration
+            if authMode == .oauth,
+               let newExpiration = toolkit.authState.tokenExpiration,
+               newExpiration.timeIntervalSinceNow > 0 {
+                let newTTL = newExpiration.timeIntervalSinceNow
+                tokenTTL = newTTL
+                tokenTimer?.invalidate()
+                startTokenCountdown(expiresAt: newExpiration)
+                return
+            }
             tokenSecondsRemaining = 0
             tokenTimer?.invalidate()
             tokenTimer = nil

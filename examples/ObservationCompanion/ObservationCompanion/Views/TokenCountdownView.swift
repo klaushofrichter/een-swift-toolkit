@@ -3,14 +3,10 @@ import SwiftUI
 struct TokenCountdownView: View {
     @EnvironmentObject var appState: AppState
 
-    private var isQRMode: Bool {
-        if case .qrCode = appState.authMode { return true }
-        return false
-    }
-
     private var progress: Double {
-        let total = appState.tokenTTL
+        let total = Double(appState.tokenTTL)
         let remaining = Double(appState.tokenSecondsRemaining)
+        guard total > 0 else { return 0 }
         return max(0, min(1, remaining / total))
     }
 
@@ -38,38 +34,26 @@ struct TokenCountdownView: View {
     }
 
     var body: some View {
-        if isQRMode {
-            HStack(spacing: 6) {
-                Text(timeString)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(barColor)
-                    .monospacedDigit()
+        HStack(spacing: 6) {
+            Text(timeString)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(barColor)
+                .monospacedDigit()
 
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(height: 6)
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(height: 6)
 
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(barColor)
-                            .frame(width: geometry.size.width * progress, height: 6)
-                            .animation(.linear(duration: 1), value: progress)
-                    }
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(barColor)
+                        .frame(width: geometry.size.width * progress, height: 6)
+                        .animation(.linear(duration: 1), value: progress)
                 }
-                .frame(width: 60, height: 6)
             }
-        } else {
-            // OAuth mode: show authenticated indicator
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(Color.green)
-                    .frame(width: 6, height: 6)
-                Text("OAuth")
-                    .font(.caption2)
-                    .foregroundColor(.green)
-            }
+            .frame(width: 60, height: 6)
         }
     }
 }

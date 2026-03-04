@@ -265,6 +265,64 @@ toolkit.authState.inject(token: token, baseUrl: baseUrl, expiresIn: Int(ttl))
 
 This bypasses the OAuth flow entirely. The injected token has a fixed TTL and cannot be refreshed.
 
+## Auth Mode and UI Behavior
+
+Apps that support both OAuth and QR code injection should track the auth mode to adjust UI behavior:
+
+```swift
+enum AuthMode { case oauth, qrCode }
+var authMode: AuthMode?
+```
+
+The close/disconnect button behavior should differ:
+- **OAuth mode**: Show a logout confirmation alert before calling `revokeToken()` and resetting
+- **QR code mode**: Reset immediately (no revocation needed, token is ephemeral)
+
+```swift
+Button {
+    if appState.authMode == .oauth {
+        showLogoutConfirmation = true  // Alert with "Sign Out" destructive action
+    } else {
+        appState.reset()  // Direct reset for QR code tokens
+    }
+} label: {
+    Image(systemName: "xmark.circle.fill")
+}
+```
+
+## Token Injection for Testing (Environment Variables)
+
+For E2E/UI testing, apps should support token injection via environment variables. This allows XCUITests to bypass OAuth login entirely:
+
+```swift
+// In the App struct's .task modifier:
+private func checkTokenInjection() async {
+    let env = ProcessInfo.processInfo.environment
+    if let token = env["EEN_TOKEN"],
+       let baseUrl = env["EEN_BASE_URL"],
+       let cameraId = env["EEN_CAMERA_ID"] {
+        let ttl = env["EEN_TTL"].flatMap { Double($0) }
+        appState.configureQRCode(
+            token: token, cameraId: cameraId,
+            baseUrl: baseUrl, ttl: ttl
+        )
+        return
+    }
+    // Fallback: try restoring OAuth session from Keychain
+    let restored = await toolkit.restoreSession()
+    if restored { appState.configureOAuth() }
+}
+```
+
+The XCUITest injects these via `app.launchEnvironment`:
+```swift
+app.launchEnvironment["EEN_TOKEN"] = accessToken
+app.launchEnvironment["EEN_BASE_URL"] = httpsBaseUrl
+app.launchEnvironment["EEN_CAMERA_ID"] = cameraId
+```
+
+See the `een-swifttest-agent` for the complete E2E testing pattern.
+
 ## Constraints
 - **Mobile apps must use the mobile proxy**, not the Cloudflare Workers web proxy — the web proxy uses cookies/CORS which don't work in WKWebView or ASWebAuthenticationSession.
 - For WKWebView OAuth, set `redirectUri` to the proxy URL, not a custom URL scheme.

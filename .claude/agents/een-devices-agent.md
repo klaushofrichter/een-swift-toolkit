@@ -178,8 +178,57 @@ class CameraListViewModel: ObservableObject {
 }
 ```
 
+## Camera Discovery for Testing
+
+When writing E2E tests or run scripts, discover a camera ID dynamically rather than hardcoding:
+
+```bash
+# In a shell script — get first available camera
+CAMERA_RESPONSE=$(curl -sf -H "Authorization: Bearer $TOKEN" \
+    "$BASE_URL/api/v3.0/cameras?pageSize=1")
+CAMERA_ID=$(echo "$CAMERA_RESPONSE" | python3 -c \
+    "import json, sys; print(json.load(sys.stdin)['results'][0]['id'])")
+```
+
+```swift
+// In Swift — get first available camera
+let params = ListCamerasParams(pageSize: 1)
+let result = try await toolkit.cameras.list(params: params)
+guard let camera = result.results.first else {
+    throw NSError(domain: "NoCamera", code: 0)
+}
+let cameraId = camera.id
+```
+
+This pattern is used by `run-e2e-tests.sh` and `run-ui-tests.sh` to inject a real camera ID into XCUITests. See `een-swifttest-agent` for the full E2E credential flow.
+
+## Camera Picker / Switch UI
+
+For apps that support multiple cameras, implement a picker using the camera list:
+
+```swift
+@MainActor
+class CameraPickerViewModel: ObservableObject {
+    @Published var cameras: [Camera] = []
+    @Published var selectedCamera: Camera?
+
+    func loadCameras(toolkit: EENToolkit) async {
+        var params = ListCamerasParams(pageSize: 100)
+        params.include = ["status"]
+        if let result = try? await toolkit.cameras.list(params: params) {
+            cameras = result.results
+            // Auto-select first camera if none selected
+            if selectedCamera == nil { selectedCamera = cameras.first }
+        }
+    }
+}
+```
+
+The camera name button (`.accessibilityIdentifier("CameraNameButton")`) should show the current camera name and open the picker on tap.
+
 ## Constraints
 - Camera and bridge `status` can be either a string or an object with `connectionStatus`. Always use `.effectiveStatus` to get the resolved value.
 - The `id`, `name`, and `accountId` fields are always present. All other fields require the appropriate include parameter.
 - For PTZ operations, use `toolkit.ptz` (separate service).
 - **Pagination:** The EEN API returns `""` (empty string) for `nextPageToken` when no more pages exist. `PaginatedResult` normalizes this to `nil`, so use `if let nextPageToken = result.nextPageToken` to check for more pages.
+- **Camera availability varies by account** — never hardcode camera IDs in tests. Use dynamic discovery.

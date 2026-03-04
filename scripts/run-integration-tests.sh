@@ -37,14 +37,9 @@ echo -e "${BLUE}============================================${NC}"
 echo "Proxy: $PROXY_URL"
 echo ""
 
-# 1. Check proxy is reachable
-echo -e "${BLUE}1. Checking proxy...${NC}"
-if ! curl -sf "$PROXY_URL/proxy/version" > /dev/null 2>&1; then
-    echo -e "${RED}Error:${NC} Proxy not reachable at $PROXY_URL"
-    echo "Start it with: cd ../../een-mobile-proxy/proxy && npm run dev"
-    exit 1
-fi
-echo -e "${GREEN}Proxy is running${NC}"
+# 1. Ensure proxy is running (starts it if needed)
+echo -e "${BLUE}1. Ensuring proxy is running...${NC}"
+"$SCRIPT_DIR/ensure-proxy.sh"
 echo ""
 
 # 2. Install Node dependencies if needed

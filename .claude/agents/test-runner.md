@@ -50,9 +50,16 @@ Located in `Tests/EENApiToolkitTests/Integration/`:
 - Suite has `.serialized` trait (tests run sequentially to avoid token race conditions)
 - Requires credentials acquired via Playwright OAuth automation
 
+### Xcode Project Tests (Example Apps)
+Example apps have their own test targets run via xcodebuild, not `swift test`:
+- **ObservationCompanion unit tests** — `ObservationCompanionTests` target (Swift Testing framework, no proxy needed)
+- **ObservationCompanion E2E tests** — `ObservationCompanionUITests` target (XCUITest, requires proxy + credentials)
+- **SwiftUsers UI tests** — `SwiftUsersUITests` target (XCUITest, requires proxy + credentials)
+
 ### Test Credentials
 - `scripts/get-test-token.js` — Playwright script that automates EEN login
 - `scripts/run-integration-tests.sh` — Orchestrator that acquires credentials and runs tests
+- `scripts/ensure-proxy.sh` — Auto-starts the mobile proxy if not running (kills stale port occupants)
 - Credentials stored temporarily in `test-credentials.json` (cleaned up after tests)
 
 ## Test Execution Protocol
@@ -72,13 +79,34 @@ Capture and analyze:
 cd EENApiToolkit && ./scripts/run-integration-tests.sh 2>&1
 ```
 This script:
-1. Checks the OAuth proxy is reachable (default: `http://127.0.0.1:3333`)
+1. Ensures the OAuth proxy is running via `scripts/ensure-proxy.sh`
 2. Installs Node dependencies if needed
 3. Acquires test credentials via Playwright
 4. Runs `swift test --filter Integration`
 5. Cleans up credentials file
 
-### Step 3: Generate Test Report
+### Step 3: Run Xcode Project Tests (if applicable)
+
+**ObservationCompanion unit tests** (no proxy needed):
+```bash
+cd examples/ObservationCompanion && xcodebuild test \
+    -project ObservationCompanion.xcodeproj \
+    -scheme ObservationCompanion \
+    -destination "id=$SIMULATOR_ID" \
+    -only-testing:ObservationCompanionTests 2>&1
+```
+
+**ObservationCompanion E2E tests** (requires proxy + credentials):
+```bash
+cd examples/ObservationCompanion && ./run-e2e-tests.sh
+```
+
+**SwiftUsers UI tests** (requires proxy + credentials):
+```bash
+cd examples/swift-users && ./run-ui-tests.sh
+```
+
+### Step 4: Generate Test Report
 
 Produce a structured report:
 
@@ -86,9 +114,11 @@ Produce a structured report:
 ```
 TEST SUMMARY
 ================
-Unit Tests:         X passed | Y failed | Z skipped
-Integration Tests:  X passed | Y failed | Z skipped
-Overall:            ALL PASSING or FAILURES DETECTED
+SPM Unit Tests:           X passed | Y failed | Z skipped
+SPM Integration Tests:    X passed | Y failed | Z skipped
+Xcode Unit Tests:         X passed | Y failed | Z skipped
+Xcode E2E Tests:          X passed | Y failed | Z skipped
+Overall:                  ALL PASSING or FAILURES DETECTED
 ```
 
 #### Failure Details (if any)
@@ -120,7 +150,12 @@ If failures exist:
 
 ### If integration tests require the proxy:
 - The mobile proxy must be running at `PROXY_URL` (default `http://127.0.0.1:3333`)
-- Start it with: `cd ../../een-mobile-proxy/proxy && npm run dev`
+- Use `scripts/ensure-proxy.sh` to auto-start it, or manually: `cd ../../een-mobile-proxy/proxy && npm run dev`
+
+### If running multiple test suites:
+- **Never run SPM tests and Xcode project tests in parallel** — they share DerivedData and cause "database is locked" build errors
+- Run them sequentially: SPM tests first, then Xcode unit tests, then E2E tests
+- E2E tests take 2-5 minutes (token acquisition + simulator boot + 30s per live test)
 
 ### If tests hang or timeout:
 - Allow 2 minutes for unit tests, 5 minutes for integration tests
