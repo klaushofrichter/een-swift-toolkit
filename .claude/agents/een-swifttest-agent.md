@@ -399,7 +399,7 @@ The EEN mobile proxy is required for all credential acquisition and live API tes
 ./scripts/ensure-proxy.sh
 
 # Manual alternative:
-cd ../../een-mobile-proxy/proxy && npm run dev
+cd ../een-mobile-proxy/proxy && npm run dev
 ```
 
 The proxy runs at `http://127.0.0.1:3333` by default (override with `PROXY_URL` env var). `ensure-proxy.sh` is safe to call repeatedly — it exits immediately if the proxy is already responding. It also kills stale port occupants and writes PID to `.proxy.pid` for tracking.
@@ -407,6 +407,6 @@ The proxy runs at `http://127.0.0.1:3333` by default (override with `PROXY_URL` 
 ### Other Dependencies
 
 - **Playwright + Chromium**: Used by `scripts/get-test-token.js` to automate EEN login. Install with `npm install && npx playwright install chromium`.
-- **Proxy credentials**: `TEST_USER` and `TEST_PASSWORD` in `../../een-mobile-proxy/proxy/.dev.vars`.
+- **Proxy credentials**: `TEST_USER` and `TEST_PASSWORD` in `../een-mobile-proxy/proxy/.dev.vars`.
 - **iOS Simulator**: Must be available and bootable. The run script auto-discovers and boots one.
 - **EEN account**: Must have at least one camera for camera discovery to succeed.

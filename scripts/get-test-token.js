@@ -9,7 +9,7 @@
  *   node scripts/get-test-token.js
  *   PROXY_URL=https://my-proxy.workers.dev node scripts/get-test-token.js
  *
- * Requires TEST_USER, TEST_PASSWORD, CLIENT_ID in ../../een-mobile-proxy/proxy/.dev.vars
+ * Requires TEST_USER, TEST_PASSWORD, CLIENT_ID in ../een-mobile-proxy/proxy/.dev.vars
  */
 
 import { chromium } from 'playwright'
@@ -22,7 +22,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT_DIR = resolve(__dirname, '..')
 
 // Load environment from the mobile proxy's .dev.vars
-config({ path: resolve(ROOT_DIR, '../../een-mobile-proxy/proxy/.dev.vars') })
+config({ path: resolve(ROOT_DIR, '../een-mobile-proxy/proxy/.dev.vars') })
 
 const PROXY_URL = process.env.PROXY_URL || 'http://127.0.0.1:3333'
 const CLIENT_ID = process.env.CLIENT_ID || 'PREVIEW-KLAUS-MOBILE'
@@ -31,7 +31,7 @@ const TEST_PASSWORD = process.env.TEST_PASSWORD
 const OUTPUT_FILE = resolve(ROOT_DIR, 'test-credentials.json')
 
 if (!TEST_USER || !TEST_PASSWORD) {
-  console.error('Error: TEST_USER and TEST_PASSWORD must be set in ../../een-mobile-proxy/proxy/.dev.vars or environment')
+  console.error('Error: TEST_USER and TEST_PASSWORD must be set in ../een-mobile-proxy/proxy/.dev.vars or environment')
   process.exit(1)
 }
 

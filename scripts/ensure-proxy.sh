@@ -12,7 +12,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-PROXY_DIR="$(cd "$PROJECT_DIR/../../een-mobile-proxy/proxy" 2>/dev/null && pwd)" || true
+PROXY_DIR="$(cd "$PROJECT_DIR/../een-mobile-proxy/proxy" 2>/dev/null && pwd)" || true
 PROXY_URL="${PROXY_URL:-http://127.0.0.1:3333}"
 PROXY_LOG="$PROJECT_DIR/.proxy.log"
 MAX_WAIT=30
@@ -54,7 +54,7 @@ if [ -n "$PORT_PID" ]; then
 fi
 
 if [ -z "$PROXY_DIR" ] || [ ! -f "$PROXY_DIR/package.json" ]; then
-    echo -e "${RED}Error:${NC} Cannot find mobile proxy at $PROJECT_DIR/../../een-mobile-proxy/proxy/"
+    echo -e "${RED}Error:${NC} Cannot find mobile proxy at $PROJECT_DIR/../een-mobile-proxy/proxy/"
     echo "Start it manually: cd <path-to-een-mobile-proxy/proxy> && npm run dev"
     exit 1
 fi

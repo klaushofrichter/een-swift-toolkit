@@ -7,7 +7,7 @@
 #   PROXY_URL=https://my-proxy.workers.dev ./scripts/run-integration-tests.sh
 #
 # Prerequisites:
-#   - Mobile proxy running (locally: cd ../../een-mobile-proxy/proxy && npm run dev)
+#   - Mobile proxy running (locally: cd ../een-mobile-proxy/proxy && npm run dev)
 #   - Node.js + npm installed
 #   - Swift toolchain installed
 

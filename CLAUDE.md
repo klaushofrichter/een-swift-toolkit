@@ -14,7 +14,7 @@ Native Swift SDK for the Eagle Eye Networks (EEN) Video API v3.0. iOS/macOS apps
 
 ```bash
 # Build
-cd EENApiToolkit && swift build
+swift build
 
 # Run all unit tests
 swift test

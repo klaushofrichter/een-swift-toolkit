@@ -143,13 +143,13 @@ swift test
 Integration tests (requires mobile proxy running at `127.0.0.1:3333` and test credentials):
 ```bash
 # 1. Start the mobile proxy
-cd ../../een-mobile-proxy/proxy && npm run dev
+cd ../een-mobile-proxy/proxy && npm run dev
 
 # 2. Run integration tests (acquires token via Playwright, then runs swift test)
 ./scripts/run-integration-tests.sh
 ```
 
-The token acquisition script (`scripts/get-test-token.js`) automates OAuth login using Playwright and writes `test-credentials.json`. It reads `TEST_USER` and `TEST_PASSWORD` from `../../een-mobile-proxy/proxy/.dev.vars`.
+The token acquisition script (`scripts/get-test-token.js`) automates OAuth login using Playwright and writes `test-credentials.json`. It reads `TEST_USER` and `TEST_PASSWORD` from `../een-mobile-proxy/proxy/.dev.vars`.
 
 ObservationCompanion unit tests:
 ```bash

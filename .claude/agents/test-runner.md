@@ -75,16 +75,16 @@ When the user asks to "run all tests" or "run the full test suite", execute ALL 
 All integration and E2E tests require the EEN mobile proxy. Always start with:
 
 ```bash
-cd EENApiToolkit && ./scripts/ensure-proxy.sh
+./scripts/ensure-proxy.sh
 ```
 
-This checks if the proxy is responding at `PROXY_URL` (default `http://127.0.0.1:3333`), and if not, starts it in the background from `../../een-mobile-proxy/proxy/` via `npm run dev`. It waits up to 30s for readiness, kills stale port occupants, and writes PID to `.proxy.pid`. Safe to call repeatedly — exits immediately if proxy is already running.
+This checks if the proxy is responding at `PROXY_URL` (default `http://127.0.0.1:3333`), and if not, starts it in the background from `../een-mobile-proxy/proxy/` via `npm run dev`. It waits up to 30s for readiness, kills stale port occupants, and writes PID to `.proxy.pid`. Safe to call repeatedly — exits immediately if proxy is already running.
 
-**Manual alternative**: `cd ../../een-mobile-proxy/proxy && npm run dev`
+**Manual alternative**: `cd ../een-mobile-proxy/proxy && npm run dev`
 
 ### Step 1: Run SPM Unit Tests
 ```bash
-cd EENApiToolkit && swift test 2>&1
+swift test 2>&1
 ```
 This runs both unit tests and integration tests (integration tests will use credentials from `test-credentials.json` if available, or skip gracefully).
 
@@ -96,7 +96,7 @@ Capture and analyze:
 
 ### Step 2: Run SPM Integration Tests
 ```bash
-cd EENApiToolkit && ./scripts/run-integration-tests.sh 2>&1
+./scripts/run-integration-tests.sh 2>&1
 ```
 This script:
 1. Ensures the OAuth proxy is running via `scripts/ensure-proxy.sh`
@@ -107,7 +107,7 @@ This script:
 
 ### Step 3: Run ObservationCompanion E2E Tests
 ```bash
-cd EENApiToolkit/examples/ObservationCompanion && ./run-e2e-tests.sh 2>&1
+cd examples/ObservationCompanion && ./run-e2e-tests.sh 2>&1
 ```
 This script:
 1. Ensures proxy is running
@@ -121,7 +121,7 @@ This script:
 
 ### Step 4: Run SwiftUsers UI Tests
 ```bash
-cd EENApiToolkit/examples/swift-users && ./run-ui-tests.sh 2>&1
+cd examples/swift-users && ./run-ui-tests.sh 2>&1
 ```
 This script follows the same pattern: proxy, credentials, simulator, xcodebuild.
 

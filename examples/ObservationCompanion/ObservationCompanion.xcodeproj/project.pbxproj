@@ -202,7 +202,7 @@
 			mainGroup = 031EB2332F577B7C000A3337;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				031EB2662F577C4A000A3337 /* XCLocalSwiftPackageReference "../../../EENApiToolkit" */,
+				031EB2662F577C4A000A3337 /* XCLocalSwiftPackageReference "../.." */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 031EB23D2F577B7C000A3337 /* Products */;
@@ -591,9 +591,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		031EB2662F577C4A000A3337 /* XCLocalSwiftPackageReference "../../../EENApiToolkit" */ = {
+		031EB2662F577C4A000A3337 /* XCLocalSwiftPackageReference "../.." */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../../EENApiToolkit;
+			relativePath = ../..;
 		};
 /* End XCLocalSwiftPackageReference section */
 
