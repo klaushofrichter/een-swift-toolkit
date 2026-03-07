@@ -155,7 +155,7 @@ Unit tests cover EventTypeHash, CameraEvent, AppState URL parsing, state managem
 # Run via Xcode (requires simulator)
 xcodebuild test -project examples/ObservationCompanion/ObservationCompanion.xcodeproj \
   -scheme ObservationCompanion \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+  -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
 ```
 
 ## Testing
@@ -210,7 +210,7 @@ ObservationCompanion unit tests:
 ```bash
 xcodebuild test -project examples/ObservationCompanion/ObservationCompanion.xcodeproj \
   -scheme ObservationCompanion \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+  -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
 ```
 
 ## Claude Code Agents
@@ -225,6 +225,7 @@ This project includes specialized [Claude Code agents](https://docs.anthropic.co
 | **een-devices-agent** | Orange | Cameras, bridges, device listing, status filtering, include parameters, device selection UI | `CameraService`, `BridgeService`, `Camera`/`Bridge` models, `CameraStatusValue` decoding |
 | **een-events-agent** | Purple | Events, alerts, event types, event metrics, SSE streaming, event thumbnails | `EventService`, `EventMetricService`, `EventSubscriptionService`, `SSEClient`, include schemas |
 | **een-media-agent** | Red | Live/recorded images, media intervals, feeds, stream URLs, HLS | `MediaService`, `FeedService`, image display, timestamp navigation, feed URL includes |
+| **een-swifttest-agent** | Orange | E2E tests (XCUITest), credential injection, accessibility identifiers, simulator management | XCUITest patterns, file-based credentials, run scripts, accessibility rules |
 | **test-runner** | Green | Running unit and integration tests, reporting results | `swift test`, `run-integration-tests.sh`, test filtering, result interpretation |
 
 ### How the Agents Work
@@ -258,6 +259,7 @@ Use the een-devices-agent to show me how to filter cameras by status and tags.
 ├── een-devices-agent.md   # Cameras and bridges
 ├── een-events-agent.md    # Events, alerts, SSE streaming
 ├── een-media-agent.md     # Live/recorded images, feeds
+├── een-swifttest-agent.md # E2E tests, XCUITest, credential injection
 └── test-runner.md         # Test execution and reporting
 ```
 
