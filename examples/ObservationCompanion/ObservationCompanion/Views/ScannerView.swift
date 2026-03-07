@@ -61,27 +61,37 @@ struct ScannerView: View {
             pasteURLSection
             oauthLoginSection
             Spacer()
+            Text("v\(toolkitVersion)")
+                .font(.caption2)
+                .foregroundColor(.gray)
+                .padding(.bottom, 8)
         }
     }
 
     // MARK: - Landscape Layout
 
     private var landscapeLayout: some View {
-        HStack(spacing: 0) {
-            VStack(spacing: 16) {
-                Spacer()
-                brandingSection
-                oauthLoginSection
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                VStack(spacing: 16) {
+                    Spacer()
+                    brandingSection
+                    oauthLoginSection
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
 
-            VStack(spacing: 12) {
-                cameraScannerSection
-                pasteURLSection
+                VStack(spacing: 12) {
+                    cameraScannerSection
+                    pasteURLSection
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+            Text("v\(toolkitVersion)")
+                .font(.caption2)
+                .foregroundColor(.gray)
+                .padding(.bottom, 4)
         }
     }
 
@@ -281,13 +291,14 @@ struct ScannerView: View {
     // MARK: - Handlers
 
     private func handleScannedURL(_ urlString: String, persist: Bool = true) {
-        guard let url = URL(string: urlString) else {
-            appState.connectionState = .error("Invalid URL: \(String(urlString.prefix(60)))...")
+        let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed) else {
+            appState.connectionState = .error("Invalid URL: \(String(trimmed.prefix(60)))...")
             return
         }
         if persist {
-            UserDefaults.standard.set(urlString, forKey: Self.savedURLKey)
-            savedURL = urlString
+            UserDefaults.standard.set(trimmed, forKey: Self.savedURLKey)
+            savedURL = trimmed
         }
         appState.handleViewerURL(url)
     }

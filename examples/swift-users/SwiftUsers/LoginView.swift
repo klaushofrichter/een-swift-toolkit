@@ -57,9 +57,14 @@ struct LoginView: View {
 
             Spacer()
 
-            Text("Proxy: \(AppConfig.proxyUrl)")
-                .font(.caption2)
-                .foregroundColor(.secondary)
+            VStack(spacing: 2) {
+                Text("v\(toolkitVersion)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                Text("Proxy: \(AppConfig.proxyUrl)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
         }
         .sheet(isPresented: $showingOAuth) {
             if let authUrl {

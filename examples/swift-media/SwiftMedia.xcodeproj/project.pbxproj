@@ -20,6 +20,7 @@
 		AA00000000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000011 /* Assets.xcassets */; };
 		AA00000000000000000012 /* EENApiToolkit in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000002 /* EENApiToolkit */; };
 		AA00000000000000000013 /* Utilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000013 /* Utilities.swift */; };
+		AA00000000000000000014 /* Version.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000014 /* Version.swift */; };
 		AA00000000000000000101 /* SwiftMediaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000101 /* SwiftMediaUITests.swift */; };
 		AA00000000000000000201 /* SwiftMediaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000201 /* SwiftMediaTests.swift */; };
 /* End PBXBuildFile section */
@@ -55,6 +56,7 @@
 		AB00000000000000000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB00000000000000000012 /* SwiftMedia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftMedia.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB00000000000000000013 /* Utilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities.swift; sourceTree = "<group>"; };
+		AB00000000000000000014 /* Version.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Version.swift; sourceTree = "<group>"; };
 		AB00000000000000000101 /* SwiftMediaUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftMediaUITests.swift; sourceTree = "<group>"; };
 		AB00000000000000000102 /* SwiftMediaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftMediaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB00000000000000000201 /* SwiftMediaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftMediaTests.swift; sourceTree = "<group>"; };
@@ -111,6 +113,7 @@
 				AB00000000000000000009 /* RecordedImageView.swift */,
 				AB00000000000000000010 /* RecordedVideoView.swift */,
 				AB00000000000000000013 /* Utilities.swift */,
+				AB00000000000000000014 /* Version.swift */,
 				AB00000000000000000011 /* Assets.xcassets */,
 			);
 			path = SwiftMedia;
@@ -288,6 +291,7 @@
 				AA00000000000000000009 /* RecordedImageView.swift in Sources */,
 				AA00000000000000000010 /* RecordedVideoView.swift in Sources */,
 				AA00000000000000000013 /* Utilities.swift in Sources */,
+				AA00000000000000000014 /* Version.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -32,7 +32,8 @@ struct ObservationCompanionApp: App {
     private func handleIncomingURL(_ url: URL) {
         guard url.scheme == AppConfig.urlScheme else { return }
 
-        if url.host == "callback" {
+        let host = url.host(percentEncoded: false) ?? url.host
+        if host == "callback" {
             // OAuth callback
             let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
             if let code = components?.queryItems?.first(where: { $0.name == "code" })?.value {

@@ -96,13 +96,15 @@ class AppState: ObservableObject {
     // MARK: - QR Code Flow
 
     func handleViewerURL(_ url: URL) {
-        guard url.scheme == AppConfig.urlScheme else {
-            connectionState = .error("Invalid URL scheme: \(url.scheme ?? "nil")")
+        guard let scheme = url.scheme?.lowercased(),
+              scheme == AppConfig.urlScheme.lowercased() else {
+            connectionState = .error("Invalid URL scheme: '\(url.scheme ?? "nil")' (expected '\(AppConfig.urlScheme)')")
             return
         }
 
         // OAuth callback - ignore here, handled by app entry point
-        if url.host == "callback" { return }
+        let host = url.host(percentEncoded: false) ?? url.host
+        if host == "callback" { return }
 
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let queryItems = components.queryItems, !queryItems.isEmpty else {

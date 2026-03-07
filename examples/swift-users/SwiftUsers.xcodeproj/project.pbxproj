@@ -16,6 +16,7 @@
 		FA00000000000000000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FB00000000000000000007 /* Assets.xcassets */; };
 		FA00000000000000000008 /* EENApiToolkit in Frameworks */ = {isa = PBXBuildFile; productRef = FE00000000000000000002 /* EENApiToolkit */; };
 		FA00000000000000000009 /* OAuthWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB00000000000000000009 /* OAuthWebView.swift */; };
+		FA00000000000000000010 /* Version.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB00000000000000000010 /* Version.swift */; };
 		FA00000000000000000101 /* SwiftUsersUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB00000000000000000101 /* SwiftUsersUITests.swift */; };
 /* End PBXBuildFile section */
 
@@ -39,6 +40,7 @@
 		FB00000000000000000007 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FB00000000000000000008 /* SwiftUsers.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftUsers.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FB00000000000000000009 /* OAuthWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthWebView.swift; sourceTree = "<group>"; };
+		FB00000000000000000010 /* Version.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Version.swift; sourceTree = "<group>"; };
 		FB00000000000000000101 /* SwiftUsersUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUsersUITests.swift; sourceTree = "<group>"; };
 		FB00000000000000000102 /* SwiftUsersUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftUsersUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -81,6 +83,7 @@
 				FB00000000000000000005 /* HomeView.swift */,
 				FB00000000000000000006 /* UsersListView.swift */,
 				FB00000000000000000009 /* OAuthWebView.swift */,
+				FB00000000000000000010 /* Version.swift */,
 				FB00000000000000000007 /* Assets.xcassets */,
 			);
 			path = SwiftUsers;
@@ -215,6 +218,7 @@
 				FA00000000000000000005 /* HomeView.swift in Sources */,
 				FA00000000000000000006 /* UsersListView.swift in Sources */,
 				FA00000000000000000009 /* OAuthWebView.swift in Sources */,
+				FA00000000000000000010 /* Version.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
