@@ -218,4 +218,226 @@ final class SwiftMediaUITests: XCTestCase {
         XCTAssertTrue(liveImage.waitForExistence(timeout: 30),
                       "Live image should appear after camera auto-selection")
     }
+
+    /// Live tab should show a timestamp after image loads.
+    @MainActor
+    func testLiveTimestampAppears() throws {
+        try XCTSkipUnless(hasCredentials, "Skipping: no TEST_TOKEN set")
+
+        app.launch()
+
+        let liveTab = app.tabBars.buttons["Live"]
+        guard liveTab.waitForExistence(timeout: 15) else {
+            XCTFail("Live tab not found")
+            return
+        }
+
+        let timestamp = app.staticTexts["LiveTimestamp"]
+        XCTAssertTrue(timestamp.waitForExistence(timeout: 30),
+                      "Live timestamp should appear after image loads")
+    }
+
+    /// Auto-refresh toggle should exist on Live tab.
+    @MainActor
+    func testAutoRefreshToggleExists() throws {
+        try XCTSkipUnless(hasCredentials, "Skipping: no TEST_TOKEN set")
+
+        app.launch()
+
+        let liveTab = app.tabBars.buttons["Live"]
+        guard liveTab.waitForExistence(timeout: 15) else {
+            XCTFail("Live tab not found")
+            return
+        }
+
+        let toggle = app.switches["AutoRefreshToggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10),
+                      "Auto-refresh toggle should exist on Live tab")
+    }
+
+    /// Camera picker should show selected camera name after selection.
+    @MainActor
+    func testCameraSelectionUpdatesPickerLabel() throws {
+        try XCTSkipUnless(hasCredentials, "Skipping: no TEST_TOKEN set")
+
+        app.launch()
+
+        let liveTab = app.tabBars.buttons["Live"]
+        guard liveTab.waitForExistence(timeout: 15) else {
+            XCTFail("Live tab not found")
+            return
+        }
+
+        // Wait for camera auto-select
+        sleep(5)
+
+        let cameraPicker = app.buttons["CameraPickerButton"]
+        guard cameraPicker.waitForExistence(timeout: 10) else {
+            XCTFail("Camera picker not found")
+            return
+        }
+
+        // After auto-select, the button label should no longer say "Select Camera"
+        let label = cameraPicker.label
+        XCTAssertFalse(label.contains("Select Camera"),
+                       "Camera picker should show a camera name, not 'Select Camera'. Got: \(label)")
+    }
+
+    /// Recorded tab should load a preview image when Go is tapped.
+    @MainActor
+    func testRecordedPreviewImageLoads() throws {
+        try XCTSkipUnless(hasCredentials, "Skipping: no TEST_TOKEN set")
+
+        app.launch()
+
+        let recordedTab = app.tabBars.buttons["Recorded"]
+        guard recordedTab.waitForExistence(timeout: 15) else {
+            XCTFail("Recorded tab not found")
+            return
+        }
+        recordedTab.tap()
+
+        // Wait for camera auto-select
+        sleep(3)
+
+        let goButton = app.buttons["GoButton"]
+        guard goButton.waitForExistence(timeout: 10) else {
+            XCTFail("Go button not found")
+            return
+        }
+        goButton.tap()
+
+        // Either a preview image or "Image not available" should appear
+        let previewImage = app.images["PreviewImage"]
+        let unavailable = app.staticTexts["Image not available"]
+        let found = previewImage.waitForExistence(timeout: 30)
+            || unavailable.waitForExistence(timeout: 5)
+        XCTAssertTrue(found,
+                      "Either a preview image or 'Image not available' should appear after tapping Go")
+    }
+
+    /// Recorded tab should show Now button and it should work.
+    @MainActor
+    func testRecordedNowButton() throws {
+        try XCTSkipUnless(hasCredentials, "Skipping: no TEST_TOKEN set")
+
+        app.launch()
+
+        let recordedTab = app.tabBars.buttons["Recorded"]
+        guard recordedTab.waitForExistence(timeout: 15) else {
+            XCTFail("Recorded tab not found")
+            return
+        }
+        recordedTab.tap()
+
+        let nowButton = app.buttons["Now"]
+        XCTAssertTrue(nowButton.waitForExistence(timeout: 10),
+                      "Now button should exist on Recorded tab")
+    }
+
+    /// Video tab should show play and pause buttons.
+    @MainActor
+    func testVideoPlayPauseButtons() throws {
+        try XCTSkipUnless(hasCredentials, "Skipping: no TEST_TOKEN set")
+
+        app.launch()
+
+        let videoTab = app.tabBars.buttons["Video"]
+        guard videoTab.waitForExistence(timeout: 15) else {
+            XCTFail("Video tab not found")
+            return
+        }
+        videoTab.tap()
+
+        let playButton = app.buttons["Play"]
+        XCTAssertTrue(playButton.waitForExistence(timeout: 10),
+                      "Play button should exist on Video tab")
+
+        let pauseButton = app.buttons["Pause"]
+        XCTAssertTrue(pauseButton.exists, "Pause button should exist on Video tab")
+    }
+
+    /// Video tab should show Now button.
+    @MainActor
+    func testVideoNowButton() throws {
+        try XCTSkipUnless(hasCredentials, "Skipping: no TEST_TOKEN set")
+
+        app.launch()
+
+        let videoTab = app.tabBars.buttons["Video"]
+        guard videoTab.waitForExistence(timeout: 15) else {
+            XCTFail("Video tab not found")
+            return
+        }
+        videoTab.tap()
+
+        let nowButton = app.buttons["Now"]
+        XCTAssertTrue(nowButton.waitForExistence(timeout: 10),
+                      "Now button should exist on Video tab")
+    }
+
+    /// Sign out button should exist and return to login screen.
+    @MainActor
+    func testSignOutReturnsToLogin() throws {
+        try XCTSkipUnless(hasCredentials, "Skipping: no TEST_TOKEN set")
+
+        app.launch()
+
+        let liveTab = app.tabBars.buttons["Live"]
+        guard liveTab.waitForExistence(timeout: 15) else {
+            XCTFail("Live tab not found")
+            return
+        }
+
+        let signOut = app.buttons["SignOutButton"]
+        guard signOut.waitForExistence(timeout: 10) else {
+            XCTFail("Sign Out button not found")
+            return
+        }
+        signOut.tap()
+
+        let signIn = app.buttons["SignInButton"]
+        XCTAssertTrue(signIn.waitForExistence(timeout: 15),
+                      "Sign In button should appear after sign out")
+    }
+
+    /// Camera picker should persist selection across tabs.
+    @MainActor
+    func testCameraSelectionPersistsAcrossTabs() throws {
+        try XCTSkipUnless(hasCredentials, "Skipping: no TEST_TOKEN set")
+
+        app.launch()
+
+        let liveTab = app.tabBars.buttons["Live"]
+        guard liveTab.waitForExistence(timeout: 15) else {
+            XCTFail("Live tab not found")
+            return
+        }
+
+        // Wait for camera auto-select
+        sleep(5)
+
+        // Get camera name on Live tab
+        let livePicker = app.buttons["CameraPickerButton"]
+        guard livePicker.waitForExistence(timeout: 10) else {
+            XCTFail("Camera picker not found on Live tab")
+            return
+        }
+        let liveLabel = livePicker.label
+
+        // Switch to Recorded tab
+        let recordedTab = app.tabBars.buttons["Recorded"]
+        recordedTab.tap()
+        sleep(1)
+
+        let recordedPicker = app.buttons["CameraPickerButton"]
+        guard recordedPicker.waitForExistence(timeout: 10) else {
+            XCTFail("Camera picker not found on Recorded tab")
+            return
+        }
+        let recordedLabel = recordedPicker.label
+
+        XCTAssertEqual(liveLabel, recordedLabel,
+                       "Camera selection should persist across tabs")
+    }
 }

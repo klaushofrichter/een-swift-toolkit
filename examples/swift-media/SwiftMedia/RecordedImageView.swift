@@ -253,10 +253,6 @@ struct RecordedImageView: View {
     }
 
     private func formatTimestamp(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ"
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        // EEN API requires +00:00 format, not Z
-        return formatter.string(from: date).replacingOccurrences(of: "Z", with: "+00:00")
+        formatEENTimestamp(date)
     }
 }

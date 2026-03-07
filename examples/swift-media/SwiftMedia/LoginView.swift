@@ -13,9 +13,17 @@ struct LoginView: View {
             Spacer()
 
             VStack(spacing: 12) {
-                Image(systemName: "photo.on.rectangle.angled")
-                    .font(.system(size: 60))
-                    .foregroundColor(.blue)
+                if let icon = UIImage(named: "AppIcon") {
+                    Image(uiImage: icon)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 120, height: 120)
+                        .cornerRadius(24)
+                } else {
+                    Image(systemName: "play.rectangle.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.blue)
+                }
 
                 Text("Eagle Eye Networks")
                     .font(.title)

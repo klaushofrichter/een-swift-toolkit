@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -19,11 +19,20 @@
 		AA00000000000000000010 /* RecordedVideoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000010 /* RecordedVideoView.swift */; };
 		AA00000000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000011 /* Assets.xcassets */; };
 		AA00000000000000000012 /* EENApiToolkit in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000002 /* EENApiToolkit */; };
+		AA00000000000000000013 /* Utilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000013 /* Utilities.swift */; };
 		AA00000000000000000101 /* SwiftMediaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000101 /* SwiftMediaUITests.swift */; };
+		AA00000000000000000201 /* SwiftMediaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000201 /* SwiftMediaTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		AE00000000000000000101 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AF00000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AE00000000000000000001;
+			remoteInfo = SwiftMedia;
+		};
+		AE00000000000000000201 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = AF00000000000000000001 /* Project object */;
 			proxyType = 1;
@@ -45,8 +54,11 @@
 		AB00000000000000000010 /* RecordedVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordedVideoView.swift; sourceTree = "<group>"; };
 		AB00000000000000000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AB00000000000000000012 /* SwiftMedia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftMedia.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB00000000000000000013 /* Utilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities.swift; sourceTree = "<group>"; };
 		AB00000000000000000101 /* SwiftMediaUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftMediaUITests.swift; sourceTree = "<group>"; };
 		AB00000000000000000102 /* SwiftMediaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftMediaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB00000000000000000201 /* SwiftMediaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftMediaTests.swift; sourceTree = "<group>"; };
+		AB00000000000000000202 /* SwiftMediaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftMediaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -65,13 +77,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AC00000000000000000201 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		AD00000000000000000001 /* = */ = {
+		AD00000000000000000001 = {
 			isa = PBXGroup;
 			children = (
 				AD00000000000000000002 /* SwiftMedia */,
+				AD00000000000000000005 /* SwiftMediaTests */,
 				AD00000000000000000004 /* SwiftMediaUITests */,
 				AD00000000000000000003 /* Products */,
 			);
@@ -90,6 +110,7 @@
 				AB00000000000000000008 /* LiveImageView.swift */,
 				AB00000000000000000009 /* RecordedImageView.swift */,
 				AB00000000000000000010 /* RecordedVideoView.swift */,
+				AB00000000000000000013 /* Utilities.swift */,
 				AB00000000000000000011 /* Assets.xcassets */,
 			);
 			path = SwiftMedia;
@@ -99,6 +120,7 @@
 			isa = PBXGroup;
 			children = (
 				AB00000000000000000012 /* SwiftMedia.app */,
+				AB00000000000000000202 /* SwiftMediaTests.xctest */,
 				AB00000000000000000102 /* SwiftMediaUITests.xctest */,
 			);
 			name = Products;
@@ -110,6 +132,14 @@
 				AB00000000000000000101 /* SwiftMediaUITests.swift */,
 			);
 			path = SwiftMediaUITests;
+			sourceTree = "<group>";
+		};
+		AD00000000000000000005 /* SwiftMediaTests */ = {
+			isa = PBXGroup;
+			children = (
+				AB00000000000000000201 /* SwiftMediaTests.swift */,
+			);
+			path = SwiftMediaTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -153,6 +183,24 @@
 			productReference = AB00000000000000000102 /* SwiftMediaUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		AE00000000000000000200 /* SwiftMediaTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AF00000000000000000005 /* Build configuration list for PBXNativeTarget "SwiftMediaTests" */;
+			buildPhases = (
+				AC00000000000000000202 /* Sources */,
+				AC00000000000000000201 /* Frameworks */,
+				AC00000000000000000203 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AE00000000000000000202 /* PBXTargetDependency */,
+			);
+			name = SwiftMediaTests;
+			productName = SwiftMediaTests;
+			productReference = AB00000000000000000202 /* SwiftMediaTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -167,6 +215,10 @@
 						CreatedOnToolsVersion = 15.4;
 					};
 					AE00000000000000000100 = {
+						CreatedOnToolsVersion = 15.4;
+						TestTargetID = AE00000000000000000001;
+					};
+					AE00000000000000000200 = {
 						CreatedOnToolsVersion = 15.4;
 						TestTargetID = AE00000000000000000001;
 					};
@@ -189,6 +241,7 @@
 			projectRoot = "";
 			targets = (
 				AE00000000000000000001 /* SwiftMedia */,
+				AE00000000000000000200 /* SwiftMediaTests */,
 				AE00000000000000000100 /* SwiftMediaUITests */,
 			);
 		};
@@ -204,6 +257,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AC00000000000000000103 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AC00000000000000000203 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -227,6 +287,7 @@
 				AA00000000000000000008 /* LiveImageView.swift in Sources */,
 				AA00000000000000000009 /* RecordedImageView.swift in Sources */,
 				AA00000000000000000010 /* RecordedVideoView.swift in Sources */,
+				AA00000000000000000013 /* Utilities.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -238,6 +299,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AC00000000000000000202 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA00000000000000000201 /* SwiftMediaTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -245,6 +314,11 @@
 			isa = PBXTargetDependency;
 			target = AE00000000000000000001 /* SwiftMedia */;
 			targetProxy = AE00000000000000000101 /* PBXContainerItemProxy */;
+		};
+		AE00000000000000000202 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AE00000000000000000001 /* SwiftMedia */;
+			targetProxy = AE00000000000000000201 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -373,7 +447,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = Q8NP7LKH8R;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -401,7 +475,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = Q8NP7LKH8R;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -456,6 +530,42 @@
 			};
 			name = Release;
 		};
+		BA00000000000000000201 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.een.SwiftMediaTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SwiftMedia.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SwiftMedia";
+			};
+			name = Debug;
+		};
+		BA00000000000000000202 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.een.SwiftMediaTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SwiftMedia.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SwiftMedia";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -486,12 +596,21 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		AF00000000000000000005 /* Build configuration list for PBXNativeTarget "SwiftMediaTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BA00000000000000000201 /* Debug */,
+				BA00000000000000000202 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
 		AE00000000000000000003 /* XCLocalSwiftPackageReference "../.." */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "../..";
+			relativePath = ../..;
 		};
 /* End XCLocalSwiftPackageReference section */
 
