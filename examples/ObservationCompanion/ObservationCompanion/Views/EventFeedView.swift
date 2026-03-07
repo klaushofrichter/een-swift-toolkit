@@ -474,12 +474,12 @@ private struct EventDetailInline: View {
 struct CameraPickerSheet: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) private var dismiss
-    @State private var cameras: [(id: String, name: String)] = []
+    @State private var cameras: [(id: String, name: String, isOnline: Bool)] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var searchText = ""
 
-    private var filteredCameras: [(id: String, name: String)] {
+    private var filteredCameras: [(id: String, name: String, isOnline: Bool)] {
         if searchText.isEmpty { return cameras }
         let query = searchText.lowercased()
         return cameras.filter {
@@ -516,7 +516,10 @@ struct CameraPickerSheet: View {
                                 appState.switchCamera(to: camera.id)
                                 dismiss()
                             } label: {
-                                HStack {
+                                HStack(spacing: 10) {
+                                    Circle()
+                                        .fill(camera.isOnline ? Color.green : Color.red)
+                                        .frame(width: 8, height: 8)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(camera.name)
                                             .font(.subheadline)
@@ -556,12 +559,16 @@ struct CameraPickerSheet: View {
 
     private func loadAllCameras() async {
         do {
-            var allCameras: [(id: String, name: String)] = []
+            var allCameras: [(id: String, name: String, isOnline: Bool)] = []
             var pageToken: String? = nil
             repeat {
-                let params = ListCamerasParams(pageSize: 100, pageToken: pageToken)
+                var params = ListCamerasParams(pageSize: 100, pageToken: pageToken)
+                params.include = ["status"]
                 let response = try await appState.toolkit.cameras.list(params: params)
-                allCameras.append(contentsOf: response.results.map { ($0.id, $0.name) })
+                allCameras.append(contentsOf: response.results.map { cam in
+                    let isOnline = cam.status?.effectiveStatus == .online || cam.status?.effectiveStatus == .streaming
+                    return (cam.id, cam.name, isOnline)
+                })
                 cameras = allCameras
                 pageToken = response.nextPageToken
             } while pageToken != nil

@@ -13,18 +13,24 @@ struct ScannerView: View {
     @State private var showOAuthSheet = false
     @State private var oauthError: String?
     @State private var oauthUrl: URL?
-    @StateObject private var oauthManager = OAuthWebViewManager(redirectUri: AppConfig.redirectUri)
+    @State private var isWarmupDone = false
 
     private static let savedURLKey = "lastQRCodeURL"
     private static let minRemainingTTL: TimeInterval = 300
 
     var body: some View {
         ZStack {
-            // Hidden web view in the real view hierarchy so it actually renders
-            OAuthWebViewHidden(manager: oauthManager)
+            // Hidden warmup web view — warms the web content process so the
+            // real OAuth web view in the sheet renders instantly.
+            // Only loads about:blank to avoid interfering with the real OAuth flow.
+            if !isWarmupDone {
+                OAuthWarmupWebView(url: URL(string: "about:blank")!) {
+                    isWarmupDone = true
+                }
                 .frame(width: 0, height: 0)
                 .opacity(0)
                 .allowsHitTesting(false)
+            }
 
             if verticalSizeClass == .compact {
                 landscapeLayout
@@ -36,10 +42,12 @@ struct ScannerView: View {
         .accessibilityIdentifier("ScannerView")
         .onAppear {
             refreshSavedURL()
-            preloadAuthPage()
+            fetchAuthUrl()
         }
         .sheet(isPresented: $showOAuthSheet) {
             oauthSheet
+                .presentationDetents([.large])
+                .interactiveDismissDisabled()
         }
     }
 
@@ -204,23 +212,15 @@ struct ScannerView: View {
     private var oauthLoginSection: some View {
         VStack(spacing: 8) {
             Button {
-                oauthManager.onCallback = { code, state in
-                    showOAuthSheet = false
-                    handleOAuthCallback(code: code, state: state)
-                }
-                oauthManager.onError = { error in
-                    showOAuthSheet = false
-                    oauthError = error
-                }
                 showOAuthSheet = true
             } label: {
                 HStack(spacing: 8) {
-                    if !oauthManager.isPageLoaded {
+                    if !isWarmupDone || oauthUrl == nil {
                         ProgressView()
                             .tint(.white)
                     }
                     Image(systemName: "person.crop.circle")
-                    Text(oauthManager.isPageLoaded
+                    Text(isWarmupDone && oauthUrl != nil
                          ? "Sign In with Eagle Eye Networks"
                          : "Preparing Sign In…")
                 }
@@ -228,10 +228,10 @@ struct ScannerView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(oauthManager.isPageLoaded ? Color.blue : Color.gray)
+                .background(isWarmupDone && oauthUrl != nil ? Color.blue : Color.gray)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .disabled(!oauthManager.isPageLoaded)
+            .disabled(!isWarmupDone || oauthUrl == nil)
             .padding(.horizontal, 40)
             .accessibilityIdentifier("OAuthLoginButton")
 
@@ -248,30 +248,33 @@ struct ScannerView: View {
     @ViewBuilder
     private var oauthSheet: some View {
         NavigationView {
-            OAuthWebViewSheet(manager: oauthManager)
-                .navigationTitle("Sign In")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Cancel") {
-                            showOAuthSheet = false
-                            // Re-create web view for next attempt
-                            if let url = oauthUrl {
-                                oauthManager.reset(authUrl: url)
-                            }
-                        }
-                    }
+            OAuthWebView(
+                authUrl: oauthUrl ?? URL(string: "about:blank")!,
+                redirectUri: AppConfig.redirectUri,
+                onCallback: { code, state in
+                    showOAuthSheet = false
+                    handleOAuthCallback(code: code, state: state)
+                },
+                onError: { error in
+                    showOAuthSheet = false
+                    oauthError = error
                 }
+            )
+            .navigationTitle("Sign In")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") {
+                            showOAuthSheet = false
+                        }
+                }
+            }
         }
     }
 
-    // MARK: - Preloading
-
-    private func preloadAuthPage() {
+    private func fetchAuthUrl() {
         Task {
-            let url = await appState.toolkit.auth.getAuthUrl()
-            oauthUrl = url
-            oauthManager.loadAuthUrl(url)
+            oauthUrl = await appState.toolkit.auth.getAuthUrl()
         }
     }
 
