@@ -4,6 +4,7 @@
 *.xcodeproj/
 !examples/**/SwiftUsers.xcodeproj/
 !examples/**/ObservationCompanion.xcodeproj/
+!examples/**/SwiftMedia.xcodeproj/
 xcuserdata/
 DerivedData/
 Package.resolved
@@ -14,8 +15,17 @@ package-lock.json
 
 # Credentials & secrets
 test-credentials.json
+ui-test-credentials.json
 .env
+!.env.example
 .dev.vars
+
+# Proxy
+.proxy.log
+.proxy.pid
+
+# Build artifacts
+build/
 
 # macOS
 .DS_Store

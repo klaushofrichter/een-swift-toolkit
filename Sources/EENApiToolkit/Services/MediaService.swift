@@ -15,7 +15,7 @@ public struct MediaService: Sendable {
         return result
     }
 
-    /// Get a live preview image from a camera. Returns raw image data.
+    /// Get a live preview image from a camera. Returns raw image data with metadata from response headers.
     public func getLiveImage(params: GetLiveImageParams) async throws -> LiveImageResult {
         var queryItems: [URLQueryItem] = [
             URLQueryItem(name: "deviceId", value: params.deviceId)
@@ -30,11 +30,15 @@ public struct MediaService: Sendable {
             additionalHeaders: ["Accept": "image/jpeg"]
         )
 
-        let data = try await client.requestData(endpoint)
-        return LiveImageResult(imageData: data, contentType: "image/jpeg", timestamp: nil, prevToken: nil)
+        let (data, headers) = try await client.requestDataWithHeaders(endpoint)
+        let timestamp = headerValue(headers, key: "X-Een-Timestamp")
+        let prevToken = headerValue(headers, key: "X-Een-PrevToken")
+        let contentType = headerValue(headers, key: "Content-Type") ?? "image/jpeg"
+
+        return LiveImageResult(imageData: data, contentType: contentType, timestamp: timestamp, prevToken: prevToken)
     }
 
-    /// Get a recorded image from a camera. Returns raw image data.
+    /// Get a recorded image from a camera. Returns raw image data with metadata from response headers.
     public func getRecordedImage(deviceId: String, params: GetRecordedImageParams = .init()) async throws -> RecordedImageResult {
         var queryItems = params.toQueryItems()
         queryItems.append(URLQueryItem(name: "deviceId", value: deviceId))
@@ -45,8 +49,13 @@ public struct MediaService: Sendable {
             additionalHeaders: ["Accept": "image/jpeg"]
         )
 
-        let data = try await client.requestData(endpoint)
-        return RecordedImageResult(imageData: data, contentType: "image/jpeg", timestamp: nil, nextToken: nil, prevToken: nil)
+        let (data, headers) = try await client.requestDataWithHeaders(endpoint)
+        let timestamp = headerValue(headers, key: "X-Een-Timestamp")
+        let nextToken = headerValue(headers, key: "X-Een-NextToken")
+        let prevToken = headerValue(headers, key: "X-Een-PrevToken")
+        let contentType = headerValue(headers, key: "Content-Type") ?? "image/jpeg"
+
+        return RecordedImageResult(imageData: data, contentType: contentType, timestamp: timestamp, nextToken: nextToken, prevToken: prevToken)
     }
 
     /// Get a media session URL.
@@ -57,5 +66,17 @@ public struct MediaService: Sendable {
     /// Initialize a media session.
     public func initMediaSession(deviceId: String) async throws -> MediaSessionResponse {
         try await client.request(Endpoint(method: .post, path: "/api/v3.0/media/session"))
+    }
+
+    /// Extract a header value with case-insensitive key matching.
+    private func headerValue(_ headers: [AnyHashable: Any], key: String) -> String? {
+        // HTTPURLResponse normalizes header keys, but check case-insensitively to be safe
+        let lowered = key.lowercased()
+        for (k, v) in headers {
+            if "\(k)".lowercased() == lowered, let str = v as? String, !str.isEmpty {
+                return str
+            }
+        }
+        return nil
     }
 }

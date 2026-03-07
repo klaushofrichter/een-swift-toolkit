@@ -115,6 +115,22 @@ cd examples/swift-users
 ./run-ui-tests.sh
 ```
 
+### swift-media
+
+The `examples/swift-media/` directory contains an iOS demo app showcasing the media features of the SDK:
+
+- Live preview image with auto-refresh
+- Recorded images (preview + main quality) with time picker and previous/next navigation
+- HLS video playback via AVPlayer with time selection
+- Camera selection shared across all tabs
+- XCUITest E2E tests with automated credential injection
+
+```bash
+# Run UI tests
+cd examples/swift-media
+./run-ui-tests.sh
+```
+
 ### ObservationCompanion
 
 The `examples/ObservationCompanion/` directory contains an iOS app for real-time camera event monitoring. It supports two auth modes:
@@ -135,32 +151,57 @@ xcodebuild test -project examples/ObservationCompanion/ObservationCompanion.xcod
 
 ## Testing
 
+### Credentials Setup
+
+Copy `.env.example` to `.env` and fill in your EEN test credentials:
+
+```bash
+cp .env.example .env
+# Edit .env with your TEST_USER and TEST_PASSWORD
+```
+
+The token acquisition script (`scripts/get-test-token.js`) automates OAuth login using Playwright and writes `test-credentials.json`. It reads `TEST_USER`, `TEST_PASSWORD`, and optionally `CLIENT_ID` from `.env`.
+
+### Run All Tests
+
+```bash
+./scripts/run-all-tests.sh
+```
+
+This discovers and runs all tests automatically:
+- Toolkit unit tests (`swift test`)
+- Toolkit integration tests (live API, requires proxy)
+- All example app unit tests and E2E tests
+
+Options:
+```bash
+SKIP_INTEGRATION=1 ./scripts/run-all-tests.sh   # skip live API tests
+SKIP_E2E=1 ./scripts/run-all-tests.sh           # skip E2E/UI tests
+```
+
+### Individual Test Commands
+
 Unit tests (SDK):
 ```bash
 swift test
 ```
 
-Integration tests (requires mobile proxy running at `127.0.0.1:3333` and test credentials):
+Integration tests (requires mobile proxy running at `127.0.0.1:3333`):
 ```bash
-# 1. Start the mobile proxy
-cd ../een-mobile-proxy/proxy && npm run dev
-
-# 2. Run integration tests (acquires token via Playwright, then runs swift test)
 ./scripts/run-integration-tests.sh
 ```
 
-The token acquisition script (`scripts/get-test-token.js`) automates OAuth login using Playwright and writes `test-credentials.json`. It reads `TEST_USER` and `TEST_PASSWORD` from `../een-mobile-proxy/proxy/.dev.vars`.
+Example app E2E tests:
+```bash
+cd examples/swift-users && ./run-ui-tests.sh
+cd examples/swift-media && ./run-ui-tests.sh
+```
 
 ObservationCompanion unit tests:
 ```bash
 xcodebuild test -project examples/ObservationCompanion/ObservationCompanion.xcodeproj \
   -scheme ObservationCompanion \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
-```
-
-UI tests for swift-users example:
-```bash
-cd examples/swift-users && ./run-ui-tests.sh
 ```
 
 ## Claude Code Agents
@@ -247,6 +288,7 @@ Tests/EENApiToolkitTests/
   Mocks/                       # MockURLProtocol
 examples/
   swift-users/                 # iOS demo app (SwiftUI, OAuth login, user listing)
+  swift-media/                 # iOS media demo (live/recorded images, HLS video)
   ObservationCompanion/        # iOS camera event monitor (QR code + OAuth, live video, SSE)
 docs/                          # Developer guides
 .claude/agents/                # Claude Code specialized agents

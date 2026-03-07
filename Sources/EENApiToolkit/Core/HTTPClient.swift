@@ -34,9 +34,21 @@ actor HTTPClient {
         try await performRequest(endpoint)
     }
 
+    /// Perform a request and return raw `Data` along with response headers.
+    /// Used for image endpoints where metadata is returned in HTTP headers.
+    func requestDataWithHeaders(_ endpoint: Endpoint) async throws -> (Data, [AnyHashable: Any]) {
+        let (data, httpResponse) = try await performRequestWithResponse(endpoint)
+        return (data, httpResponse.allHeaderFields)
+    }
+
     // MARK: - Internal
 
     private func performRequest(_ endpoint: Endpoint) async throws -> Data {
+        let (data, _) = try await performRequestWithResponse(endpoint)
+        return data
+    }
+
+    private func performRequestWithResponse(_ endpoint: Endpoint) async throws -> (Data, HTTPURLResponse) {
         let (baseUrl, token) = await (authState.baseUrl, authState.token)
 
         guard let baseUrl, let token else {
@@ -78,7 +90,7 @@ actor HTTPClient {
             throw try parseErrorResponse(data: data, statusCode: httpResponse.statusCode)
         }
 
-        return data
+        return (data, httpResponse)
     }
 
     private func buildURL(base: String, endpoint: Endpoint) throws -> URL {

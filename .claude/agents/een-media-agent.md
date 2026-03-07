@@ -39,9 +39,13 @@ assistant: "I'll use the een-media-agent to fetch feed URLs with include paramet
 - Sources/EENApiToolkit/Services/FeedService.swift
 - Sources/EENApiToolkit/Models/Media.swift
 - Sources/EENApiToolkit/Models/Feed.swift
+- examples/swift-media/ (complete iOS media demo app)
 
 ## Reference
 - Tests/EENApiToolkitTests/Integration/LiveServiceTests.swift (working examples)
+- examples/swift-media/SwiftMedia/LiveImageView.swift (live image auto-refresh)
+- examples/swift-media/SwiftMedia/RecordedImageView.swift (recorded image navigation)
+- examples/swift-media/SwiftMedia/RecordedVideoView.swift (HLS video playback)
 
 ## Your Capabilities
 1. Get live camera images with `toolkit.media.getLiveImage(params:)`
@@ -254,46 +258,84 @@ Make it best-effort (non-fatal) so it doesn't block the connection flow:
 Task { try? await toolkit.media.initMediaSession(deviceId: cameraId) }
 ```
 
-## HLS Live Streaming with AVPlayer
+## Response Headers for Image Endpoints
 
-For live video playback (not just snapshots), use HLS feed URLs with AVPlayer:
+The EEN API returns metadata in HTTP response headers for image endpoints:
 
+| Header | Description |
+|--------|-------------|
+| `X-Een-Timestamp` | Timestamp of the returned image (ISO 8601) |
+| `X-Een-NextToken` | Token to fetch the next image (recorded images only) |
+| `X-Een-PrevToken` | Token to fetch the previous image |
+
+The `MediaService` parses these headers automatically via `HTTPClient.requestDataWithHeaders()`.
+
+## HLS Video Playback with AVPlayer
+
+For HLS video playback, use `AVURLAsset` with `AVURLAssetHTTPHeaderFieldsKey` to inject the Bearer token into all segment requests. This is the recommended approach for iOS — no custom `AVAssetResourceLoaderDelegate` or local proxy is needed.
+
+### Recorded Video
 ```swift
-import AVKit
+// 1. Init media session (best-effort)
+try? await toolkit.media.initMediaSession(deviceId: cameraId)
 
-@MainActor
-class LiveVideoViewModel: ObservableObject {
-    @Published var player: AVPlayer?
-    @Published var isVideoPlaying = false
+// 2. Get HLS URL from media intervals
+var params = ListMediaParams(
+    deviceId: cameraId, type: .main,
+    mediaType: .video, startTimestamp: ts
+)
+params.include = ["hlsUrl"]
+let result = try await toolkit.media.listMedia(params: params)
+guard let hlsUrl = result.results.first?.hlsUrl else { return }
 
-    func startStreaming(toolkit: EENToolkit, cameraId: String) async {
-        // 1. Init media session (best-effort)
-        Task { try? await toolkit.media.initMediaSession(deviceId: cameraId) }
+// 3. Create AVPlayer with Bearer token
+let token = toolkit.authState.token ?? ""
+let headers = ["Authorization": "Bearer \(token)"]
+let asset = AVURLAsset(url: URL(string: hlsUrl)!, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+let player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
+player.play()
+```
 
-        // 2. Get HLS URL from feeds
-        var params = ListFeedsParams()
-        params.deviceId = cameraId
-        params.type = .preview  // or .main for full resolution
-        params.include = ["hlsUrl"]
+### Live Video
+```swift
+// Get HLS URL from feeds
+var params = ListFeedsParams()
+params.deviceId = cameraId
+params.type = .main  // or .preview
+params.include = ["hlsUrl"]
+let feeds = try await toolkit.feeds.list(params: params)
+guard let hlsUrl = feeds.results.first?.hlsUrl else { return }
 
-        let feeds = try? await toolkit.feeds.list(params: params)
-        guard let hlsUrl = feeds?.results.first?.hlsUrl,
-              let url = URL(string: hlsUrl) else { return }
+// Same AVURLAsset pattern with Bearer token
+let token = toolkit.authState.token ?? ""
+let headers = ["Authorization": "Bearer \(token)"]
+let asset = AVURLAsset(url: URL(string: hlsUrl)!, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+let player = AVPlayer(playerItem: AVPlayerItem(asset: asset))
+player.play()
+```
 
-        // 3. Start AVPlayer
-        let player = AVPlayer(url: url)
-        self.player = player
-        player.play()
-
-        // 4. Observe playback status for UI badges
-        observePlaybackStatus(player)
-    }
-
-    private func observePlaybackStatus(_ player: AVPlayer) {
-        // Use KVO or Combine to track when video actually starts playing
-        // Set isVideoPlaying = true when timeControlStatus == .playing
+### UIViewRepresentable Wrapper for AVPlayer
+```swift
+struct VideoPlayerView: UIViewRepresentable {
+    let player: AVPlayer
+    func makeUIView(context: Context) -> PlayerUIView { PlayerUIView(player: player) }
+    func updateUIView(_ uiView: PlayerUIView, context: Context) {
+        if uiView.playerLayer.player !== player { uiView.playerLayer.player = player }
     }
 }
+
+class PlayerUIView: UIView {
+    let playerLayer: AVPlayerLayer
+    init(player: AVPlayer) {
+        playerLayer = AVPlayerLayer(player: player)
+        super.init(frame: .zero)
+        playerLayer.videoGravity = .resizeAspect
+        layer.addSublayer(playerLayer)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+    override func layoutSubviews() { super.layoutSubviews(); playerLayer.frame = bounds }
+}
+```
 ```
 
 ### Video Playback State Tracking
