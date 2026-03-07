@@ -226,9 +226,30 @@ class CameraPickerViewModel: ObservableObject {
 
 The camera name button (`.accessibilityIdentifier("CameraNameButton")`) should show the current camera name and open the picker on tap.
 
+## Shared Camera List Across Tabs
+
+When an app has multiple tabs that each show a camera picker, the camera list must be shared via `@Binding` — not fetched independently per tab. Otherwise, tabs 2+ show an empty camera list because each creates its own `@State`.
+
+```swift
+// In MainTabView (parent):
+@State private var cameras: [(id: String, name: String)] = []
+
+TabView {
+    LiveTab(cameras: $cameras, ...)
+    RecordedTab(cameras: $cameras, ...)
+    VideoTab(cameras: $cameras, ...)
+}
+
+// In CameraPickerView:
+@Binding var cameras: [(id: String, name: String)]  // NOT @State
+```
+
+The first tab that loads fetches the camera list and populates the binding. Subsequent tabs see the already-loaded list immediately.
+
 ## Constraints
 - Camera and bridge `status` can be either a string or an object with `connectionStatus`. Always use `.effectiveStatus` to get the resolved value.
 - The `id`, `name`, and `accountId` fields are always present. All other fields require the appropriate include parameter.
 - For PTZ operations, use `toolkit.ptz` (separate service).
 - **Pagination:** The EEN API returns `""` (empty string) for `nextPageToken` when no more pages exist. `PaginatedResult` normalizes this to `nil`, so use `if let nextPageToken = result.nextPageToken` to check for more pages.
 - **Camera availability varies by account** — never hardcode camera IDs in tests. Use dynamic discovery.
+- **Shared camera state**: When multiple tabs use a camera picker, lift the camera list to the parent view as `@State` and pass as `@Binding`. Independent `@State` per tab causes empty lists on non-first tabs.

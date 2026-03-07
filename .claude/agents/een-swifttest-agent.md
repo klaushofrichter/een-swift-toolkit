@@ -33,7 +33,7 @@ assistant: "I'll use the een-swifttest-agent to create a run script with proxy, 
 <Task tool call to launch een-swifttest-agent>
 </example>
 
-## Reference Implementation
+## Reference Implementations
 
 The ObservationCompanion app has a working E2E test suite:
 - `examples/ObservationCompanion/ObservationCompanionUITests/ObservationCompanionUITests.swift`
@@ -43,6 +43,12 @@ The ObservationCompanion app has a working E2E test suite:
 The SwiftUsers app also has UI tests:
 - `examples/swift-users/SwiftUsersUITests/SwiftUsersUITests.swift`
 - `examples/swift-users/run-ui-tests.sh`
+
+The SwiftMedia app has both unit tests and E2E tests:
+- `examples/swift-media/SwiftMediaTests/SwiftMediaTests.swift` — 15 unit tests (formatDuration, formatEENTimestamp, AppConfig)
+- `examples/swift-media/SwiftMediaUITests/SwiftMediaUITests.swift` — 16 E2E tests covering all tabs, sign out, cross-tab persistence
+- `examples/swift-media/run-ui-tests.sh`
+- Uses `test-credentials.json` at toolkit root (no cameraId needed — app auto-selects first camera)
 
 ## E2E Test Architecture
 
@@ -407,6 +413,43 @@ The proxy runs at `http://127.0.0.1:3333` by default (override with `PROXY_URL` 
 ### Other Dependencies
 
 - **Playwright + Chromium**: Used by `scripts/get-test-token.js` to automate EEN login. Install with `npm install && npx playwright install chromium`.
-- **Proxy credentials**: `TEST_USER` and `TEST_PASSWORD` in `../een-mobile-proxy/proxy/.dev.vars`.
+- **Proxy credentials**: `TEST_USER` and `TEST_PASSWORD` in `.env` at the toolkit root.
 - **iOS Simulator**: Must be available and bootable. The run script auto-discovers and boots one.
 - **EEN account**: Must have at least one camera for camera discovery to succeed.
+
+## Unit Tests for Utility Functions
+
+Apps that extract shared utility functions (e.g., `Utilities.swift`) should have unit tests in a separate test target:
+
+```swift
+// SwiftMediaTests/SwiftMediaTests.swift
+import XCTest
+@testable import SwiftMedia
+
+final class FormatDurationTests: XCTestCase {
+    func testZeroSeconds() { XCTAssertEqual(formatDuration(0), "0:00") }
+    func testNegativeValue() { XCTAssertEqual(formatDuration(-1), "0:00") }
+    func testInfinity() { XCTAssertEqual(formatDuration(Double.infinity), "0:00") }
+    func testNaN() { XCTAssertEqual(formatDuration(Double.nan), "0:00") }
+    func testFractionalSeconds() { XCTAssertEqual(formatDuration(1.9), "0:01") }  // Truncate, not round
+}
+```
+
+**Adding a unit test target to an Xcode project** requires editing the `.xcodeproj/project.pbxproj` to add:
+- A new native target (type `com.apple.product-type.bundle.unit-test`)
+- Build configurations (Debug/Release) with `TEST_HOST` pointing to the app
+- Source build phases for test files
+- Framework build phase linking XCTest
+- Target dependency on the app target
+
+## Credential File Locations
+
+Different apps use different credential file paths:
+
+| App | Credential File | Needs cameraId |
+|-----|----------------|----------------|
+| ObservationCompanion | `e2e-credentials.json` (in project dir) | Yes |
+| SwiftUsers | `ui-test-credentials.json` (in project dir) or `test-credentials.json` (toolkit root) | No |
+| SwiftMedia | `ui-test-credentials.json` (in project dir) or `test-credentials.json` (toolkit root) | No (auto-selects first camera) |
+
+Apps that auto-select cameras don't need `cameraId` in credentials — they fetch the camera list on launch and select the first one. This simplifies credential injection for E2E tests.

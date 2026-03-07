@@ -358,6 +358,75 @@ if viewModel.isVideoPlaying {
 **Testing note:** Video playback on the simulator takes time (HLS must connect, buffer, and start).
 Use 30s timeouts in XCUITests for video-dependent assertions. See `een-swifttest-agent` for E2E test patterns.
 
+## Video Playback Progress with Scrubbing
+
+Track playback position with `addPeriodicTimeObserver` and a `Slider` for scrubbing:
+
+```swift
+@State private var playbackPosition: Double = 0
+@State private var playbackDuration: Double = 0
+@State private var isScrubbing = false
+@State private var timeObserver: Any?
+
+// In setupPlayer:
+let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
+timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
+    guard !isScrubbing, let item = player.currentItem, item.duration.isNumeric else { return }
+    playbackDuration = item.duration.seconds
+    playbackPosition = time.seconds
+}
+
+// Slider with seek-on-release:
+Slider(
+    value: $playbackPosition,
+    in: 0...max(playbackDuration, 1),
+    onEditingChanged: { editing in
+        isScrubbing = editing
+        if !editing {
+            player.seek(to: CMTime(seconds: playbackPosition, preferredTimescale: 600),
+                       toleranceBefore: .zero, toleranceAfter: .zero)
+        }
+    }
+)
+```
+
+**Important**: Remove the time observer in `stopPlayback()` with `player.removeTimeObserver(observer)`.
+
+## Handling Missing Recordings ("Image Not Available")
+
+Main quality recordings may not always be available (camera may only record preview). Handle this gracefully:
+
+```swift
+@State private var mainImageUnavailable = false
+
+// In fetch:
+do {
+    let result = try await toolkit.media.getRecordedImage(deviceId: cameraId, params: mainParams)
+    if let img = UIImage(data: result.imageData) { mainImage = img }
+    else { mainImageUnavailable = true }
+} catch {
+    mainImageUnavailable = true
+}
+
+// In view:
+if mainImageUnavailable {
+    Text("Image not available")
+        .foregroundColor(.secondary)
+        .frame(maxWidth: .infinity, minHeight: 100)
+        .background(Color(.systemGray6))
+        .cornerRadius(8)
+}
+```
+
+## Shared Utility Functions
+
+Extract timestamp and duration formatting to a shared `Utilities.swift` file (see `examples/swift-media/SwiftMedia/Utilities.swift`):
+
+- `formatEENTimestamp(_ date: Date) -> String` — EEN-compatible timestamp with `+00:00` suffix
+- `formatDuration(_ seconds: Double) -> String` — Human-readable `m:ss` or `h:mm:ss` format
+
+These are used across `RecordedImageView`, `RecordedVideoView`, and `LiveImageView`, and are unit-tested in `SwiftMediaTests`.
+
 ## Constraints
 - Live and recorded image methods return raw `Data` (JPEG bytes), not base64.
 - Always use `formatTimestamp()` for timestamp parameters.
@@ -367,3 +436,4 @@ Use 30s timeouts in XCUITests for video-dependent assertions. See `een-swifttest
 - Media session initialization may not be available on all API versions — make it best-effort.
 - **Pagination:** The EEN API returns `""` (empty string) for `nextPageToken` when no more pages exist. `PaginatedResult` normalizes this to `nil`, so use `if let nextPageToken = result.nextPageToken` to check for more pages.
 - **HLS playback on simulator**: Allow 30s for video to start playing. The stream must connect, buffer, and begin decoding before `timeControlStatus` becomes `.playing`.
+- **Main quality may be unavailable**: Not all cameras record main quality continuously. Always handle the case where `getRecordedImage` with `.main` type returns an error or empty data.

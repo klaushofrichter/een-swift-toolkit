@@ -119,16 +119,25 @@ cd examples/swift-users
 
 The `examples/swift-media/` directory contains an iOS demo app showcasing the media features of the SDK:
 
-- Live preview image with auto-refresh
+- Live preview image with auto-refresh and timestamp display
 - Recorded images (preview + main quality) with time picker and previous/next navigation
-- HLS video playback via AVPlayer with time selection
-- Camera selection shared across all tabs
-- XCUITest E2E tests with automated credential injection
+- HLS video playback via AVPlayer with progress slider and scrubbing
+- Camera selection shared across all tabs via `@Binding`
+- Shared time selector between Recorded Image and Recorded Video tabs
+- "Image not available" fallback when recordings are missing
+- App icon (blue media playback theme) displayed on login page
+- Cloudflare proxy as default for iPhone builds
+- 15 unit tests (formatDuration, formatEENTimestamp, AppConfig)
+- 16 XCUITest E2E tests covering all tabs, sign out, and cross-tab persistence
 
 ```bash
-# Run UI tests
-cd examples/swift-media
-./run-ui-tests.sh
+# Run unit tests
+xcodebuild test -project examples/swift-media/SwiftMedia.xcodeproj \
+  -scheme SwiftMedia -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -only-testing:SwiftMediaTests
+
+# Run E2E tests
+cd examples/swift-media && ./run-ui-tests.sh
 ```
 
 ### ObservationCompanion

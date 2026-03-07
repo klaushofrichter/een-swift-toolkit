@@ -55,6 +55,8 @@ Example apps have their own test targets run via xcodebuild, not `swift test`:
 - **ObservationCompanion unit tests** — `ObservationCompanionTests` target (Swift Testing framework, no proxy needed)
 - **ObservationCompanion E2E tests** — `ObservationCompanionUITests` target (XCUITest, requires proxy + credentials)
 - **SwiftUsers UI tests** — `SwiftUsersUITests` target (XCUITest, requires proxy + credentials)
+- **SwiftMedia unit tests** — `SwiftMediaTests` target (XCTest, no proxy needed; tests formatDuration, formatEENTimestamp, AppConfig)
+- **SwiftMedia E2E tests** — `SwiftMediaUITests` target (XCUITest, requires proxy + credentials; 16 tests covering all tabs)
 
 ### Test Credentials
 - `scripts/get-test-token.js` — Playwright script that automates EEN login
@@ -125,7 +127,18 @@ cd examples/swift-users && ./run-ui-tests.sh 2>&1
 ```
 This script follows the same pattern: proxy, credentials, simulator, xcodebuild.
 
-### Step 5: Generate Test Report
+### Step 5: Run SwiftMedia Unit + E2E Tests
+```bash
+# Unit tests (15 tests: FormatDuration, FormatEENTimestamp, AppConfig)
+xcodebuild test -project examples/swift-media/SwiftMedia.xcodeproj \
+  -scheme SwiftMedia -destination "id=$SIMULATOR" \
+  -only-testing:SwiftMediaTests 2>&1
+
+# E2E tests (16 tests: all tabs, sign out, cross-tab persistence)
+cd examples/swift-media && ./run-ui-tests.sh 2>&1
+```
+
+### Step 6: Generate Test Report
 
 Produce a structured report:
 
@@ -137,6 +150,8 @@ SPM Unit Tests:                    X passed | Y failed | Z skipped
 SPM Integration Tests:             X passed | Y failed | Z skipped
 ObservationCompanion E2E Tests:    X passed | Y failed | Z skipped
 SwiftUsers UI Tests:               X passed | Y failed | Z skipped
+SwiftMedia Unit Tests:             X passed | Y failed | Z skipped
+SwiftMedia E2E Tests:              X passed | Y failed | Z skipped
 Overall:                           ALL PASSING or FAILURES DETECTED
 ```
 

@@ -323,12 +323,53 @@ app.launchEnvironment["EEN_CAMERA_ID"] = cameraId
 
 See the `een-swifttest-agent` for the complete E2E testing pattern.
 
+## Sheet Dismiss Handling (Login Flow)
+
+When presenting OAuth login in a `.sheet()`, the user can dismiss it via gesture (swipe) or Esc key on iPad/Mac. The Cancel button handler won't fire in this case, leaving the loading spinner stuck. Always use the sheet's `onDismiss` callback to reset state:
+
+```swift
+.sheet(isPresented: $showLogin, onDismiss: {
+    isLoading = false  // Reset spinner when sheet is dismissed by any means
+}) {
+    OAuthWebView(...)
+}
+```
+
+## Cloudflare Proxy for Physical Device Builds
+
+For iPhone deployments, apps cannot reach `localhost`. Default the proxy URL to a Cloudflare Workers proxy:
+
+```swift
+struct AppConfig {
+    static let proxyUrl = ProcessInfo.processInfo.environment["PROXY_URL"]
+        ?? "https://your-proxy.workers.dev"
+    static let redirectUri = ProcessInfo.processInfo.environment["REDIRECT_URI"]
+        ?? "https://your-proxy.workers.dev"
+}
+```
+
+This allows simulator builds to override via environment variables while iPhone builds use the cloud proxy automatically.
+
+## App Icon on Login Page
+
+Display the app icon on the login page using `UIImage(named: "AppIcon")`:
+
+```swift
+if let icon = UIImage(named: "AppIcon") {
+    Image(uiImage: icon)
+        .resizable()
+        .frame(width: 120, height: 120)
+        .cornerRadius(24)
+}
+```
+
 ## Constraints
 - **Mobile apps must use the mobile proxy**, not the Cloudflare Workers web proxy — the web proxy uses cookies/CORS which don't work in WKWebView or ASWebAuthenticationSession.
 - For WKWebView OAuth, set `redirectUri` to the proxy URL, not a custom URL scheme.
-- The proxy URL must be accessible from the device (not localhost in production).
+- The proxy URL must be accessible from the device (not localhost in production). Use Cloudflare proxy for iPhone builds.
 - `ASWebAuthenticationSession` requires a presentation context on iOS.
 - `storageStrategy: .keychain` is recommended for production; `.memory` is for testing.
 - Token auto-refresh runs automatically — you don't need to manage it manually.
 - `authState` is `@MainActor` — access from background tasks with `await`.
 - `getAuthUrl()` is actor-isolated — call it in a `Task` and store the result in `@State`, don't call it synchronously in a SwiftUI view body.
+- **Sheet dismiss**: Always use `onDismiss` on `.sheet()` to reset loading state — gesture/Esc dismiss does not trigger the Cancel button handler.
