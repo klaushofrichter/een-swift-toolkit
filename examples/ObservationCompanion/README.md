@@ -11,9 +11,14 @@ A SwiftUI iOS app for real-time camera event monitoring using the [EENApiToolkit
   - **OAuth flow** — full OAuth login via the Cloudflare proxy
 - **Live HLS video** — streaming via AVPlayer with "LIVE HD" badge
 - **SSE event streaming** — real-time event feed via Server-Sent Events
-- **Event history** — loads recent events on connect (configurable duration)
+- **Event history** — loads up to 250 recent events on connect (configurable duration)
+- **Event detail view** — tap an event to see recorded image with bounding box overlay
+- **Recorded video playback** — play recorded HLS video at event timestamp with timeline scrubber
+- **Event navigation** — Older/Newer buttons with time deltas, swipe left/right gestures
+- **Event type icons** — 56 EEN event types mapped to specific emoji icons, green border when bounding boxes present
 - **Event type filtering** — toggle event types, shows hashed short codes
 - **Camera switching** — switch between cameras on the same account
+- **Landscape mode** — 50/50 split between live video and event feed
 - **Token countdown** — visual countdown for QR code token expiry
 - **Sound alerts** — optional audio notification on new events
 - **Paste URL** — paste a deep link URL for simulator/testing use
@@ -52,7 +57,7 @@ ObservationCompanion/
 ├── Version.swift                  # Auto-generated toolkit version
 ├── Models/
 │   ├── AppState.swift             # Connection state, HLS player, SSE, token countdown
-│   └── CameraEvent.swift          # Event model
+│   └── CameraEvent.swift          # Event model, bounding box extraction, 56 event type icons
 ├── Utils/
 │   ├── EventTypeHash.swift        # 3-char hash codes for event types
 │   └── SoundPlayer.swift          # Audio alert on new events
@@ -61,7 +66,7 @@ ObservationCompanion/
     ├── ScannerView.swift          # QR scanner, paste URL, OAuth login, version display
     ├── OAuthWebView.swift         # WKWebView OAuth + warmup web view
     ├── LiveVideoView.swift        # HLS video player with LIVE HD badge
-    ├── EventFeedView.swift        # Event list with filtering and history
+    ├── EventFeedView.swift        # Event list, detail view, recorded video, navigation
     └── TokenCountdownView.swift   # Token TTL progress bar
 ```
 
@@ -77,6 +82,8 @@ ObservationCompanion/
 | Event history | `GET /events` | `toolkit.events.list(params:)` |
 | SSE subscription | `POST /eventSubscriptions` | `toolkit.eventSubscriptions.create(params:)` |
 | SSE stream | SSE connection | `toolkit.eventSubscriptions.connect(sseUrl:options:)` |
+| Recorded image | `GET /media/recordedImage` | `toolkit.media.getRecordedImage(deviceId:params:)` |
+| Recorded video | `GET /media` | `toolkit.media.listMedia(params:)` with `include: ["hlsUrl"]` |
 
 ## Tests
 
