@@ -4,6 +4,7 @@ import EENApiToolkit
 @main
 struct ObservationCompanionApp: App {
     @StateObject private var appState: AppState
+    @StateObject private var watchManager = PhoneWatchConnectivityManager()
 
     init() {
         let toolkit = EENToolkit(config: EENToolkitConfig(
@@ -24,6 +25,7 @@ struct ObservationCompanionApp: App {
                     handleIncomingURL(url)
                 }
                 .task {
+                    watchManager.activate(appState: appState)
                     await checkTokenInjection()
                 }
         }

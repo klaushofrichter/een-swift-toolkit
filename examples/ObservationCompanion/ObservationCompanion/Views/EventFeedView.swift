@@ -801,7 +801,7 @@ private struct EventDetailInline: View {
         videoError = nil
 
         do {
-            try? await toolkit.media.initMediaSession(deviceId: cameraId)
+            _ = try? await toolkit.media.initMediaSession(deviceId: cameraId)
 
             // Query 10 seconds before the event to get a media interval containing it
             let queryStart = event.timestamp.addingTimeInterval(-10)
