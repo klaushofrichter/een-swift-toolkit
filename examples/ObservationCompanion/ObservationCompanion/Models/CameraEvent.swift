@@ -61,19 +61,89 @@ struct CameraEvent: Identifiable, Equatable {
     }
 
     var typeEmoji: String {
-        switch type.lowercased() {
-        case let t where t.contains("motion"):
-            return "🏃"
-        case let t where t.contains("online"):
-            return "🟢"
-        case let t where t.contains("offline"):
-            return "🔴"
-        case let t where t.contains("tamper"):
-            return "⚠️"
-        case let t where t.contains("recording"):
-            return "⏺️"
-        default:
-            return "📋"
+        switch type {
+        // Detection events
+        case "een.motionDetectionEvent.v1":             return "👁️"
+        case "een.motionInRegionDetectionEvent.v1":     return "🎯"
+        case "een.personDetectionEvent.v1":             return "🧑"
+        case "een.personMotionDetectionEvent.v1":       return "🚶"
+        case "een.animalDetectionEvent.v1":             return "🐾"
+        case "een.faceDetectionEvent.v1":               return "😀"
+        case "een.vehicleDetectionEvent.v1":            return "🚗"
+        case "een.vehicleMotionDetectionEvent.v1":      return "🚙"
+        case "een.gunDetectionEvent.v1":                return "🔫"
+        case "een.weaponDetectionEvent.v1":             return "🗡️"
+        case "een.fallDetectionEvent.v1":               return "🤸"
+        case "een.fireDetectionEvent.v1":               return "🔥"
+        case "een.spillDetectionEvent.v1":              return "💧"
+        case "een.crowdFormationDetectionEvent.v1":     return "👥"
+        // Camera analytics
+        case "een.tamperDetectionEvent.v1":             return "⚠️"
+        case "een.loiterDetectionEvent.v1":             return "🕐"
+        case "een.objectLineCrossEvent.v1":             return "➡️"
+        case "een.objectLineCrossCountEvent.v1":        return "🔢"
+        case "een.countedObjectLineCrossEvent.v1":      return "🔢"
+        case "een.objectIntrusionEvent.v1":             return "🚧"
+        case "een.objectRemovalEvent.v1":               return "📦"
+        case "een.personTailgateEvent.v1":              return "🚪"
+        case "een.ppeViolationEvent.v1":                return "🦺"
+        // AI/Scene
+        case "een.sceneLabelEvent.v1":                  return "🏷️"
+        case "een.eevaQueryEvent.v1":                   return "🤖"
+        // LPR & Fleet
+        case "een.lprPlateReadEvent.v1":                return "🪪"
+        case "een.fleetCodeRecognitionEvent.v1":        return "🚛"
+        // Audio
+        case "een.gunShotAudioDetectionEvent.v1":       return "💥"
+        case "een.t3AlarmAudioDetectionEvent.v1":       return "🔔"
+        case "een.t4AlarmAudioDetectionEvent.v1":       return "🔔"
+        // POS
+        case "een.posTransactionEvent.v1":              return "💳"
+        // Device/System
+        case "een.deviceCloudStatusUpdateEvent.v1":     return "☁️"
+        case "een.deviceCloudConnectionStatusUpdateEvent.v1": return "🔌"
+        case "een.edgeReportedDeviceStatusEvent.v1":    return "📡"
+        case "een.deviceIOEvent.v1":                    return "⚡"
+        case "een.deviceOperationEvent.v1":             return "🔧"
+        case "een.ptzPositionUpdateEvent.v1":           return "🎥"
+        // Sensor
+        case "een.doorStatusEvent.v1":                  return "🚪"
+        case "een.batteryLevelUpdateEvent.v1":          return "🔋"
+        case "een.measurementThresholdStatusEvent.v1":  return "📊"
+        case "een.thermalCameraThresholdStatusEvent.v1": return "🌡️"
+        // Resource management
+        case "een.layoutCreationEvent.v1":              return "📐"
+        case "een.layoutUpdateEvent.v1":                return "📐"
+        case "een.layoutDeletionEvent.v1":              return "📐"
+        case "een.deviceCreationEvent.v1":              return "📹"
+        case "een.deviceUpdateEvent.v1":                return "📹"
+        case "een.deviceDeletionEvent.v1":              return "📹"
+        case "een.userCreationEvent.v1":                return "👤"
+        case "een.userUpdateEvent.v1":                  return "👤"
+        case "een.userDeletionEvent.v1":                return "👤"
+        case "een.accountCreationEvent.v1":             return "🏢"
+        case "een.accountUpdateEvent.v1":               return "🏢"
+        case "een.accountDeletionEvent.v1":             return "🏢"
+        // Job
+        case "een.jobCreationEvent.v1":                 return "📋"
+        case "een.jobUpdateEvent.v1":                   return "📋"
+        case "een.jobDeletionEvent.v1":                 return "📋"
+        // Access control
+        case "een.accessActivationEvent.v1":            return "🔑"
+        // Safety/Protocol
+        case "een.panicButtonEvent.v1":                 return "🆘"
+        case "een.evacuateProtocolEvent.v1":            return "🏃‍♂️"
+        case "een.holdProtocolEvent.v1":                return "✋"
+        case "een.lockdownProtocolEvent.v1":            return "🔒"
+        case "een.secureProtocolEvent.v1":              return "🛡️"
+        case "een.shelterProtocolEvent.v1":             return "🏠"
+        // Behavioral
+        case "een.violenceDetectionEvent.v1":           return "👊"
+        case "een.fightDetectionEvent.v1":              return "🥊"
+        case "een.handsUpDetectionEvent.v1":            return "🙌"
+        case "een.vapeDetectionEvent.v1":               return "🚬"
+        // Fallback
+        default:                                        return "📋"
         }
     }
 }

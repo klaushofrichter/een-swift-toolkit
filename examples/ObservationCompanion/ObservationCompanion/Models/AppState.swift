@@ -377,7 +377,7 @@ class AppState: ObservableObject {
                 actor: "camera:\(cameraId)",
                 typeIn: activeEventTypes,
                 startTimestampGte: startTime,
-                pageSize: 100
+                pageSize: 250
             )
             params.startTimestampLte = endTime
             params.sort = "-startTimestamp"
@@ -489,7 +489,7 @@ class AppState: ObservableObject {
         } else {
             let insertIndex = events.firstIndex(where: { $0.timestamp < event.timestamp }) ?? events.endIndex
             events.insert(event, at: insertIndex)
-            if events.count > 100 {
+            if events.count > 250 {
                 events.removeLast()
             }
         }
@@ -511,7 +511,7 @@ class AppState: ObservableObject {
             }
         }
         if merged.count > 100 {
-            merged = Array(merged.prefix(100))
+            merged = Array(merged.prefix(250))
         }
         events = merged
     }

@@ -94,10 +94,10 @@ struct MainContentView: View {
                             GeometryReader { geo in
                                 HStack(spacing: 0) {
                                     videoOrPlaceholder
-                                        .frame(width: geo.size.width * 0.6)
+                                        .frame(width: geo.size.width * 0.5)
 
                                     EventFeedView()
-                                        .frame(width: geo.size.width * 0.4)
+                                        .frame(width: geo.size.width * 0.5)
                                 }
                             }
                         } else {

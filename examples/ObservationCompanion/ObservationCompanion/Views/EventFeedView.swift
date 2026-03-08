@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 import EENApiToolkit
 
 struct EventFeedView: View {
@@ -352,13 +353,31 @@ private struct EventDetailInline: View {
     let toolkit: EENToolkit
     let cameraId: String
     let cameraName: String
+
+    // Image state
     @State private var image: UIImage?
     @State private var imageError: String?
     @State private var isLoading = false
 
+    // Video state
+    @State private var player: AVPlayer?
+    @State private var isVideoMode = false
+    @State private var isVideoLoading = false
+    @State private var isPlaying = false
+    @State private var videoError: String?
+    @State private var playerObservation: NSKeyValueObservation?
+    @State private var rateObservation: NSKeyValueObservation?
+    @State private var timeObserver: Any?
+    @State private var playbackPosition: Double = 0
+    @State private var playbackDuration: Double = 0
+    @State private var isScrubbing = false
+    @State private var wasPlayingBeforeScrub = false
+    @State private var videoStartDate: Date?
+    @State private var seekedToEvent = false
+
     private static let fullFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return f
     }()
 
@@ -384,13 +403,34 @@ private struct EventDetailInline: View {
         return idx < events.count - 1
     }
 
+    /// Whether bounding boxes should show based on current video position.
+    /// Shows when playback is within ±0.25s of the event timestamp, or when
+    /// paused at the event position (seekedToEvent flag covers seek completion).
+    private var showBoundingBoxesInVideo: Bool {
+        guard isVideoMode, let startDate = videoStartDate else { return false }
+        if seekedToEvent && !isPlaying { return true }
+        let eventOffset = event.timestamp.timeIntervalSince(startDate)
+        return abs(playbackPosition - eventOffset) <= 0.25
+    }
+
     var body: some View {
         VStack(spacing: 0) {
+            // Header
             HStack {
-                Text("\(event.typeEmoji) \(EventTypeHash.displayName(event.type))")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
+                HStack(spacing: 6) {
+                    Text(event.typeEmoji)
+                        .font(.subheadline)
+                        .padding(event.boundingBoxes.isEmpty ? 0 : 3)
+                        .overlay(
+                            event.boundingBoxes.isEmpty ? nil :
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.green, lineWidth: 2)
+                        )
+                    Text(EventTypeHash.displayName(event.type))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                }
                 Spacer()
                 if let idx = currentIndex {
                     Text("\(idx + 1)/\(events.count)")
@@ -398,7 +438,7 @@ private struct EventDetailInline: View {
                         .foregroundColor(.gray)
                         .monospacedDigit()
                 }
-                Button("Done") { selectedEvent = nil }
+                Button("Done") { stopVideo(); selectedEvent = nil }
                     .font(.subheadline)
                     .fontWeight(.semibold)
             }
@@ -411,26 +451,7 @@ private struct EventDetailInline: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Time")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                            TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                                let seconds = Int(timeline.date.timeIntervalSince(event.timestamp))
-                                HStack(spacing: 4) {
-                                    Text("\(Self.fullFormatter.string(from: event.timestamp)) -")
-                                        .font(.subheadline)
-                                        .foregroundColor(.white)
-                                    Text(EventRow.elapsedText(seconds: seconds))
-                                        .font(.subheadline)
-                                        .foregroundColor(seconds < 120 ? .white : .gray.opacity(0.7))
-                                }
-                            }
-                        }
-                        DetailRow(label: "Actor", value: "\(event.actorId) - \(cameraName)")
-                    }
-
+                    // Media content
                     if isInternalEvent {
                         if !event.raw.isEmpty {
                             Text(event.raw)
@@ -442,6 +463,8 @@ private struct EventDetailInline: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                                 .textSelection(.enabled)
                         }
+                    } else if isVideoMode {
+                        videoContent
                     } else if isLoading {
                         ProgressView("Loading image...")
                             .frame(maxWidth: .infinity)
@@ -450,22 +473,7 @@ private struct EventDetailInline: View {
                         Image(uiImage: image)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .overlay(
-                                GeometryReader { geo in
-                                    ForEach(Array(event.boundingBoxes.enumerated()), id: \.offset) { _, box in
-                                        Rectangle()
-                                            .stroke(Color.green, lineWidth: 2)
-                                            .frame(
-                                                width: box.width * geo.size.width,
-                                                height: box.height * geo.size.height
-                                            )
-                                            .position(
-                                                x: (box.x + box.width / 2) * geo.size.width,
-                                                y: (box.y + box.height / 2) * geo.size.height
-                                            )
-                                    }
-                                }
-                            )
+                            .overlay(boundingBoxOverlay)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     } else if let imageError {
                         VStack(spacing: 8) {
@@ -481,50 +489,31 @@ private struct EventDetailInline: View {
                         .padding(.vertical, 20)
                     }
 
-                    // Navigation buttons
-                    if hasPrevious || hasNext {
-                        VStack(spacing: 4) {
-                            HStack {
-                                Button {
-                                    navigatePrevious()
-                                } label: {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "chevron.left")
-                                        Text("Newer")
-                                    }
-                                    .font(.subheadline)
-                                    .foregroundColor(hasPrevious ? .blue : .gray.opacity(0.4))
-                                }
-                                .disabled(!hasPrevious)
+                    // Navigation row
+                    if !isInternalEvent {
+                        navigationRow
+                    }
 
-                                Spacer()
-
-                                Button {
-                                    navigateNext()
-                                } label: {
-                                    HStack(spacing: 4) {
-                                        Text("Older")
-                                        Image(systemName: "chevron.right")
-                                    }
-                                    .font(.subheadline)
-                                    .foregroundColor(hasNext ? .blue : .gray.opacity(0.4))
-                                }
-                                .disabled(!hasNext)
-                            }
-                            HStack {
-                                if hasPrevious, let idx = currentIndex {
-                                    Text(Self.timeDelta(from: events[idx - 1].timestamp, to: event.timestamp))
-                                        .font(.caption2)
-                                        .foregroundColor(.gray)
-                                }
-                                Spacer()
-                                if hasNext, let idx = currentIndex {
-                                    Text(Self.timeDelta(from: event.timestamp, to: events[idx + 1].timestamp))
-                                        .font(.caption2)
-                                        .foregroundColor(.gray)
+                    // Time & actor info
+                    VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Time")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                                let seconds = Int(timeline.date.timeIntervalSince(event.timestamp))
+                                HStack {
+                                    Text(Self.fullFormatter.string(from: event.timestamp))
+                                        .font(.subheadline)
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                    Text(EventRow.elapsedText(seconds: seconds))
+                                        .font(.subheadline)
+                                        .foregroundColor(seconds < 120 ? .white : .gray.opacity(0.7))
                                 }
                             }
                         }
+                        DetailRow(label: "Actor", value: cameraName)
                     }
                 }
                 .padding()
@@ -535,17 +524,184 @@ private struct EventDetailInline: View {
                     .onEnded { value in
                         let horizontal = abs(value.translation.width) > abs(value.translation.height)
                         if horizontal && value.translation.width > 50 {
-                            navigatePrevious()
-                        } else if horizontal && value.translation.width < -50 {
                             navigateNext()
+                        } else if horizontal && value.translation.width < -50 {
+                            navigatePrevious()
                         } else if !horizontal && value.translation.height > 80 {
+                            stopVideo()
                             selectedEvent = nil
                         }
                     }
             )
         }
         .task(id: event.id) { await loadImage() }
+        .onDisappear { stopVideo() }
     }
+
+    // MARK: - Bounding Box Overlay
+
+    @ViewBuilder
+    private var boundingBoxOverlay: some View {
+        GeometryReader { geo in
+            ForEach(Array(event.boundingBoxes.enumerated()), id: \.offset) { _, box in
+                Rectangle()
+                    .stroke(Color.green, lineWidth: 2)
+                    .frame(
+                        width: box.width * geo.size.width,
+                        height: box.height * geo.size.height
+                    )
+                    .position(
+                        x: (box.x + box.width / 2) * geo.size.width,
+                        y: (box.y + box.height / 2) * geo.size.height
+                    )
+            }
+        }
+    }
+
+    // MARK: - Video Content
+
+    @ViewBuilder
+    private var videoContent: some View {
+        if isVideoLoading {
+            ProgressView("Loading video...")
+                .frame(maxWidth: .infinity)
+                .frame(height: 200)
+        } else if let player {
+            VideoPlayerView(player: player)
+                .aspectRatio(16.0/9.0, contentMode: .fit)
+                .overlay(showBoundingBoxesInVideo ? boundingBoxOverlay : nil)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .onTapGesture { seekToEventAndPause() }
+        } else if let videoError {
+            VStack(spacing: 8) {
+                Image(systemName: "video.slash")
+                    .font(.title)
+                    .foregroundColor(.gray)
+                Text(videoError)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+        }
+    }
+
+    // MARK: - Navigation Row
+
+    private var navigationRow: some View {
+        VStack(spacing: 4) {
+            HStack {
+                Button {
+                    navigateNext()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("Older")
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(hasNext ? .blue : .gray.opacity(0.4))
+                }
+                .disabled(!hasNext)
+
+                Spacer()
+
+                // Play/Pause button
+                Button {
+                    if isVideoMode {
+                        if isPlaying {
+                            player?.pause()
+                        } else {
+                            seekedToEvent = false
+                            player?.play()
+                        }
+                    } else {
+                        Task { await loadVideo() }
+                    }
+                } label: {
+                    Image(systemName: isVideoMode && isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.title)
+                        .foregroundColor(isVideoMode && !isPlaying ? .gray : .blue)
+                }
+
+                Spacer()
+
+                Button {
+                    navigatePrevious()
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Newer")
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(hasPrevious ? .blue : .gray.opacity(0.4))
+                }
+                .disabled(!hasPrevious)
+            }
+            HStack {
+                if hasNext, let idx = currentIndex {
+                    Text(Self.timeDelta(from: event.timestamp, to: events[idx + 1].timestamp))
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+                Spacer()
+                if hasPrevious, let idx = currentIndex {
+                    Text(Self.timeDelta(from: events[idx - 1].timestamp, to: event.timestamp))
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+            }
+
+            // Timeline scrubber (only when video is loaded)
+            if isVideoMode, player != nil {
+                VStack(spacing: 2) {
+                    Slider(
+                        value: Binding(
+                            get: { playbackPosition },
+                            set: { newValue in
+                                playbackPosition = newValue
+                                if !isScrubbing {
+                                    wasPlayingBeforeScrub = isPlaying
+                                    player?.pause()
+                                }
+                                isScrubbing = true
+                                seekedToEvent = false
+                            }
+                        ),
+                        in: 0...max(playbackDuration, 1),
+                        onEditingChanged: { editing in
+                            if !editing {
+                                isScrubbing = false
+                                let time = CMTime(seconds: playbackPosition, preferredTimescale: 600)
+                                player?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
+                                    Task { @MainActor in
+                                        if finished && wasPlayingBeforeScrub {
+                                            player?.play()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    )
+                    .tint(.blue)
+
+                    HStack {
+                        Text(Self.formatDuration(playbackPosition))
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                            .monospacedDigit()
+                        Spacer()
+                        Text(Self.formatDuration(playbackDuration))
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                            .monospacedDigit()
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Time Formatting
 
     static func timeDelta(from earlier: Date, to later: Date) -> String {
         let interval = abs(later.timeIntervalSince(earlier))
@@ -569,8 +725,23 @@ private struct EventDetailInline: View {
         }
     }
 
+    static func formatDuration(_ seconds: Double) -> String {
+        guard seconds.isFinite && seconds >= 0 else { return "0:00" }
+        let total = Int(seconds)
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 {
+            return String(format: "%d:%02d:%02d", h, m, s)
+        }
+        return String(format: "%d:%02d", m, s)
+    }
+
+    // MARK: - Navigation
+
     private func navigatePrevious() {
         guard let idx = currentIndex, idx > 0 else { return }
+        stopVideo()
         image = nil
         imageError = nil
         selectedEvent = events[idx - 1]
@@ -578,10 +749,28 @@ private struct EventDetailInline: View {
 
     private func navigateNext() {
         guard let idx = currentIndex, idx < events.count - 1 else { return }
+        stopVideo()
         image = nil
         imageError = nil
         selectedEvent = events[idx + 1]
     }
+
+    private func seekToEventAndPause() {
+        guard let p = player, let startDate = videoStartDate else { return }
+        p.pause()
+        let offset = max(0, event.timestamp.timeIntervalSince(startDate))
+        let seekTime = CMTime(seconds: offset, preferredTimescale: 600)
+        p.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
+            Task { @MainActor in
+                if finished {
+                    playbackPosition = offset
+                    seekedToEvent = true
+                }
+            }
+        }
+    }
+
+    // MARK: - Image Loading
 
     private func loadImage() async {
         guard !isInternalEvent else { return }
@@ -601,6 +790,119 @@ private struct EventDetailInline: View {
             imageError = error.localizedDescription
         }
         isLoading = false
+    }
+
+    // MARK: - Video Loading
+
+    private func loadVideo() async {
+        stopVideo()
+        isVideoMode = true
+        isVideoLoading = true
+        videoError = nil
+
+        do {
+            try? await toolkit.media.initMediaSession(deviceId: cameraId)
+
+            // Query 10 seconds before the event to get a media interval containing it
+            let queryStart = event.timestamp.addingTimeInterval(-10)
+            var params = ListMediaParams(
+                deviceId: cameraId,
+                type: .main,
+                mediaType: .video,
+                startTimestamp: formatTimestamp(queryStart)
+            )
+            params.include = ["hlsUrl"]
+
+            let result = try await toolkit.media.listMedia(params: params)
+            guard let interval = result.results.first, let hlsUrl = interval.hlsUrl else {
+                videoError = "No video available at this time"
+                isVideoLoading = false
+                return
+            }
+
+            // Parse the interval start time to compute event offset
+            let isoFormatter = ISO8601DateFormatter()
+            isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            videoStartDate = isoFormatter.date(from: interval.startTimestamp)
+
+            setupPlayer(hlsUrl: hlsUrl)
+        } catch {
+            videoError = error.localizedDescription
+        }
+        isVideoLoading = false
+    }
+
+    private func setupPlayer(hlsUrl: String) {
+        guard let url = URL(string: hlsUrl) else {
+            videoError = "Invalid HLS URL"
+            return
+        }
+
+        let token = toolkit.authState.token ?? ""
+        let headers = ["Authorization": "Bearer \(token)"]
+        let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+        let item = AVPlayerItem(asset: asset)
+        let newPlayer = AVPlayer(playerItem: item)
+
+        // Start playback briefly so the player buffers, then seek+pause once ready
+        newPlayer.play()
+
+        playerObservation = item.observe(\.status) { item, _ in
+            Task { @MainActor in
+                if item.status == .readyToPlay, let startDate = videoStartDate {
+                    let offset = max(0, event.timestamp.timeIntervalSince(startDate))
+                    let seekTime = CMTime(seconds: offset, preferredTimescale: 600)
+                    newPlayer.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero) { finished in
+                        Task { @MainActor in
+                            if finished {
+                                playbackPosition = offset
+                            }
+                        }
+                    }
+                } else if item.status == .failed {
+                    videoError = item.error?.localizedDescription ?? "Playback failed"
+                }
+            }
+        }
+
+        player = newPlayer
+
+        // Observe actual playback state
+        rateObservation = newPlayer.observe(\.timeControlStatus) { player, _ in
+            Task { @MainActor in
+                isPlaying = player.timeControlStatus == .playing
+            }
+        }
+
+        let interval = CMTime(seconds: 0.25, preferredTimescale: 600)
+        timeObserver = newPlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak newPlayer] time in
+            guard !isScrubbing, let currentItem = newPlayer?.currentItem else { return }
+            let duration = currentItem.duration
+            if duration.isNumeric {
+                playbackDuration = duration.seconds
+                playbackPosition = time.seconds
+            }
+        }
+    }
+
+    private func stopVideo() {
+        if let observer = timeObserver, let p = player {
+            p.removeTimeObserver(observer)
+        }
+        timeObserver = nil
+        player?.pause()
+        player = nil
+        playerObservation?.invalidate()
+        playerObservation = nil
+        rateObservation?.invalidate()
+        rateObservation = nil
+        playbackPosition = 0
+        playbackDuration = 0
+        isVideoMode = false
+        isPlaying = false
+        videoError = nil
+        videoStartDate = nil
+        seekedToEvent = false
     }
 }
 
