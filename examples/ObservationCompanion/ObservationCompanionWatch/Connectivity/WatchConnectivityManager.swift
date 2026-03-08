@@ -22,6 +22,13 @@ class WatchConnectivityManager: NSObject, ObservableObject {
     }
 
     private func addEvent(_ event: WatchEvent, isLive: Bool) {
+        // If camera changed, clear old events
+        if !event.cameraId.isEmpty && !events.isEmpty && events.first?.cameraId != event.cameraId {
+            NSLog("[WatchConnectivity] Camera changed from events, clearing old events")
+            events.removeAll()
+            cameraChangeCount += 1
+        }
+
         events.append(event)
         events.sort { $0.timestamp > $1.timestamp }
         if events.count > Self.maxEvents {
@@ -97,6 +104,8 @@ extension WatchConnectivityManager: WCSessionDelegate {
     }
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        NSLog("[WatchConnectivity] Received message keys: %@", Array(message.keys).joined(separator: ", "))
+
         if let errorMsg = message["liveImageError"] as? String {
             Task { @MainActor in
                 liveImageCompletion?(nil)
@@ -107,6 +116,7 @@ extension WatchConnectivityManager: WCSessionDelegate {
         }
 
         if message["cameraChange"] as? Bool == true {
+            NSLog("[WatchConnectivity] Camera change received: %@", message["cameraName"] as? String ?? "unknown")
             Task { @MainActor in
                 if let name = message["cameraName"] as? String {
                     cameraName = name

@@ -12,17 +12,25 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
     private var prewarmCameraId: String?
     private var activeEventTypes: Set<String> = []
 
+    private var isActivated = false
+    private var lastSentCameraName: String?
+
     func activate(appState: AppState) {
+        guard !isActivated else { return }
+        isActivated = true
         self.appState = appState
-        guard WCSession.isSupported() else { return }
+        let supported = WCSession.isSupported()
+        NSLog("[WatchConnectivity] activate called, WCSession.isSupported: %@", supported ? "yes" : "no")
+        guard supported else { return }
         session = WCSession.default
         session?.delegate = self
         session?.activate()
+        NSLog("[WatchConnectivity] Session activated, subscribing to appState publishers")
 
         appState.$events
             .receive(on: DispatchQueue.main)
             .sink { [weak self] events in
-                guard let self = self else { return }
+                guard let self = self, let appState = self.appState else { return }
                 self.handleEventsUpdate(events, cameraName: appState.cameraName, cameraId: appState.cameraId)
             }
             .store(in: &cancellables)
@@ -30,6 +38,7 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
         appState.$cameraName
             .receive(on: DispatchQueue.main)
             .sink { [weak self] name in
+                NSLog("[WatchConnectivity] cameraName publisher fired: '%@'", name)
                 self?.handleCameraChange(cameraName: name)
             }
             .store(in: &cancellables)
@@ -43,6 +52,16 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
     }
 
     private func handleEventsUpdate(_ events: [CameraEvent], cameraName: String, cameraId: String) {
+        // Don't send anything until the camera is fully loaded
+        guard !cameraName.isEmpty, !cameraId.isEmpty else { return }
+
+        // Detect camera change when we have events and camera name is ready
+        if !events.isEmpty && cameraName != lastSentCameraName {
+            NSLog("[WatchConnectivity] Camera name changed to '%@', sending cameraChange", cameraName)
+            lastSentCameraName = cameraName
+            handleCameraChange(cameraName: cameraName)
+        }
+
         let currentIds = Set(events.map(\.id))
         let newEvents = events.filter { !previousEventIds.contains($0.id) }
         previousEventIds = currentIds
@@ -99,14 +118,20 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
         let cameraId = appState.cameraId
         let events = appState.events
 
-        NSLog("[WatchConnectivity] Sync requested, sending %d events for %@", events.count, cameraName)
-
-        // Send camera name
-        if !cameraName.isEmpty {
-            session.sendMessage(["cameraChange": true, "cameraName": cameraName], replyHandler: nil) { error in
-                print("[WatchConnectivity] Sync camera send failed: \(error.localizedDescription)")
-            }
+        // Don't sync if the phone hasn't loaded a camera yet
+        guard !cameraName.isEmpty, !cameraId.isEmpty else {
+            NSLog("[WatchConnectivity] Sync requested but camera not ready yet")
+            return
         }
+
+        NSLog("[WatchConnectivity] Sync: sending cameraChange + %d events for %@", events.count, cameraName)
+
+        // Send camera change to clear Watch state and set correct camera name
+        session.sendMessage(["cameraChange": true, "cameraName": cameraName], replyHandler: nil) { error in
+            NSLog("[WatchConnectivity] Sync cameraChange send failed: %@", error.localizedDescription)
+        }
+        try? session.updateApplicationContext(["cameraName": cameraName])
+        lastSentCameraName = cameraName
 
         // Send current events
         for event in events {
@@ -137,16 +162,22 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
     }
 
     private func handleCameraChange(cameraName: String) {
-        guard let session = session, session.activationState == .activated else { return }
+        guard !cameraName.isEmpty else { return }
+        guard let session = session, session.activationState == .activated else {
+            NSLog("[WatchConnectivity] Camera change skipped: session not activated")
+            return
+        }
+        NSLog("[WatchConnectivity] Camera change: %@, reachable: %@", cameraName, session.isReachable ? "yes" : "no")
         try? session.updateApplicationContext(["cameraName": cameraName])
         previousEventIds.removeAll()
         prewarmCameraId = nil
         if session.isReachable {
             session.sendMessage(["cameraChange": true, "cameraName": cameraName], replyHandler: nil) { error in
-                print("[WatchConnectivity] Camera change send failed: \(error.localizedDescription)")
+                NSLog("[WatchConnectivity] Camera change send failed: %@", error.localizedDescription)
             }
         }
     }
+
 
     private func prewarmImage(cameraId: String, timestamp: Date) {
         guard let appState = appState else { return }

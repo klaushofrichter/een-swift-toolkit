@@ -9,6 +9,7 @@ struct EventFeedView: View {
     @State private var hasNewEvents = false
     @State private var isAtTop = true
     @State private var previousEventCount = 0
+    @State private var lastSelectedEventId: UUID?
 
     private let timeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -92,6 +93,7 @@ struct EventFeedView: View {
             if selectedEvent != nil {
                 EventDetailInline(
                     selectedEvent: $selectedEvent,
+                    lastSelectedEventId: $lastSelectedEventId,
                     events: displayedEvents,
                     toolkit: appState.toolkit,
                     cameraId: appState.cameraId,
@@ -117,8 +119,11 @@ struct EventFeedView: View {
                                 .onDisappear { isAtTop = false }
 
                             ForEach(displayedEvents) { event in
-                                EventRow(event: event, timeFormatter: timeFormatter)
-                                    .onTapGesture { selectedEvent = event }
+                                EventRow(event: event, timeFormatter: timeFormatter, isHighlighted: event.id == lastSelectedEventId)
+                                    .onTapGesture {
+                                        lastSelectedEventId = event.id
+                                        selectedEvent = event
+                                    }
                             }
                         }
                     }
@@ -289,6 +294,7 @@ private struct EventTypePickerSheet: View {
 private struct EventRow: View {
     let event: CameraEvent
     let timeFormatter: DateFormatter
+    var isHighlighted: Bool = false
 
     static func elapsedText(seconds: Int) -> String {
         if seconds < 0 { return "" }
@@ -305,20 +311,14 @@ private struct EventRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .center, spacing: 8) {
             Text(event.typeEmoji)
                 .font(.body)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(EventTypeHash.displayName(event.type))
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.white)
-                Text(event.description)
-                    .font(.caption2)
-                    .foregroundColor(.gray)
-                    .lineLimit(2)
-            }
+            Text(EventTypeHash.displayName(event.type))
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.white)
 
             Spacer()
 
@@ -338,6 +338,7 @@ private struct EventRow: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
+        .background(isHighlighted ? Color(white: 0.25) : Color.clear)
         .contentShape(Rectangle())
 
         Divider()
@@ -349,6 +350,7 @@ private struct EventRow: View {
 
 private struct EventDetailInline: View {
     @Binding var selectedEvent: CameraEvent?
+    @Binding var lastSelectedEventId: UUID?
     let events: [CameraEvent]
     let toolkit: EENToolkit
     let cameraId: String
@@ -438,9 +440,11 @@ private struct EventDetailInline: View {
                         .foregroundColor(.gray)
                         .monospacedDigit()
                 }
-                Button("Done") { stopVideo(); selectedEvent = nil }
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+                Button { stopVideo(); selectedEvent = nil } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.gray)
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -514,6 +518,9 @@ private struct EventDetailInline: View {
                             }
                         }
                         DetailRow(label: "Actor", value: cameraName)
+                        if let eventId = event.eventId {
+                            DetailRow(label: "Event ID", value: eventId)
+                        }
                     }
                 }
                 .padding()
@@ -745,6 +752,7 @@ private struct EventDetailInline: View {
         image = nil
         imageError = nil
         selectedEvent = events[idx - 1]
+        lastSelectedEventId = events[idx - 1].id
     }
 
     private func navigateNext() {
@@ -753,6 +761,7 @@ private struct EventDetailInline: View {
         image = nil
         imageError = nil
         selectedEvent = events[idx + 1]
+        lastSelectedEventId = events[idx + 1].id
     }
 
     private func seekToEventAndPause() {

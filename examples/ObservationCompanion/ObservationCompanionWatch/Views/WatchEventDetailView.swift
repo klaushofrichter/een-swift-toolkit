@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct WatchEventDetailView: View {
-    let event: WatchEvent
+    @Binding var eventId: UUID
     @EnvironmentObject var connectivityManager: WatchConnectivityManager
 
     @State private var imageData: Data?
@@ -10,71 +10,105 @@ struct WatchEventDetailView: View {
 
     private static let fullFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "HH:mm:ss"
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return f
     }()
 
+    private var event: WatchEvent? {
+        connectivityManager.events.first { $0.id == eventId }
+    }
+
+    private var currentIndex: Int? {
+        connectivityManager.events.firstIndex { $0.id == eventId }
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                // Recorded image
-                if isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, minHeight: 80)
-                } else if let imageData, let uiImage = UIImage(data: imageData) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .overlay(boundingBoxOverlay)
-                        .cornerRadius(8)
-                } else if loadFailed {
-                    HStack {
-                        Image(systemName: "photo.slash")
-                        Text("No image")
-                            .font(.caption2)
+        if let event {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    // Recorded image
+                    if isLoading {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, minHeight: 80)
+                    } else if let imageData, let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .overlay(boundingBoxOverlay(for: event))
+                            .cornerRadius(8)
+                    } else if loadFailed {
+                        HStack {
+                            Image(systemName: "photo.slash")
+                            Text("No image")
+                                .font(.caption2)
+                        }
+                        .foregroundColor(.gray)
+                        .frame(maxWidth: .infinity, minHeight: 40)
                     }
-                    .foregroundColor(.gray)
-                    .frame(maxWidth: .infinity, minHeight: 40)
-                }
 
-                HStack {
-                    Text(event.typeEmoji)
-                        .font(.title3)
-                    Text(event.typeName)
-                        .font(.headline)
-                }
+                    HStack {
+                        Text(event.typeEmoji)
+                            .font(.title3)
+                        Text(event.typeName)
+                            .font(.headline)
+                    }
 
-                Text(event.description)
-                    .font(.caption)
-                    .foregroundColor(.gray)
+                    Divider()
 
-                Divider()
-
-                Label(event.cameraName, systemImage: "video")
-                    .font(.caption2)
-                    .foregroundColor(.blue)
-
-                Label(Self.fullFormatter.string(from: event.timestamp), systemImage: "clock")
-                    .font(.caption2)
-                    .foregroundColor(.gray)
-                    .monospacedDigit()
-
-                TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                    let seconds = Int(timeline.date.timeIntervalSince(event.timestamp))
-                    Label(elapsedText(seconds: seconds), systemImage: "timer")
+                    Label(event.cameraName, systemImage: "video")
                         .font(.caption2)
-                        .foregroundColor(seconds < 120 ? .white : .gray)
+                        .foregroundColor(.blue)
+
+                    Label(Self.fullFormatter.string(from: event.timestamp), systemImage: "clock")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                        .monospacedDigit()
+
+                    TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                        let seconds = Int(timeline.date.timeIntervalSince(event.timestamp))
+                        Label(elapsedText(seconds: seconds), systemImage: "timer")
+                            .font(.caption2)
+                            .foregroundColor(seconds < 120 ? .white : .gray)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .navigationTitle("")
-        .task {
-            await loadImage()
+            .navigationTitle("")
+            .gesture(
+                DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                    .onEnded { value in
+                        guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                        if value.translation.width < -50 {
+                            // Swipe left → newer event (lower index)
+                            navigateNewer()
+                        } else if value.translation.width > 50 {
+                            // Swipe right → older event (higher index)
+                            navigateOlder()
+                        }
+                    }
+            )
+            .task(id: eventId) {
+                await loadImage()
+            }
         }
     }
 
+    private func navigateNewer() {
+        guard let idx = currentIndex, idx > 0 else { return }
+        imageData = nil
+        loadFailed = false
+        eventId = connectivityManager.events[idx - 1].id
+    }
+
+    private func navigateOlder() {
+        guard let idx = currentIndex, idx < connectivityManager.events.count - 1 else { return }
+        imageData = nil
+        loadFailed = false
+        eventId = connectivityManager.events[idx + 1].id
+    }
+
     private func loadImage() async {
+        guard let event else { return }
         isLoading = true
         await withCheckedContinuation { continuation in
             connectivityManager.requestImage(for: event) { data in
@@ -92,7 +126,7 @@ struct WatchEventDetailView: View {
     }
 
     @ViewBuilder
-    private var boundingBoxOverlay: some View {
+    private func boundingBoxOverlay(for event: WatchEvent) -> some View {
         GeometryReader { geo in
             ForEach(Array(event.boundingBoxes.enumerated()), id: \.offset) { _, box in
                 Rectangle()

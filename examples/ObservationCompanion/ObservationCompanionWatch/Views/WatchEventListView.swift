@@ -3,6 +3,7 @@ import SwiftUI
 struct WatchEventListView: View {
     @EnvironmentObject var connectivityManager: WatchConnectivityManager
     @State private var navigationPath = NavigationPath()
+    @State private var selectedEventId: UUID?
 
     private let timeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -46,16 +47,22 @@ struct WatchEventListView: View {
                         .listRowBackground(Color.clear)
 
                         ForEach(connectivityManager.events) { event in
-                            NavigationLink(value: event.id) {
+                            Button {
+                                selectedEventId = event.id
+                                navigationPath.append(event.id)
+                            } label: {
                                 WatchEventRowView(event: event, timeFormatter: timeFormatter)
                             }
                         }
                     }
                 }
             }
-            .navigationDestination(for: UUID.self) { eventId in
-                if let event = connectivityManager.events.first(where: { $0.id == eventId }) {
-                    WatchEventDetailView(event: event)
+            .navigationDestination(for: UUID.self) { _ in
+                if selectedEventId != nil {
+                    WatchEventDetailView(eventId: Binding(
+                        get: { selectedEventId ?? UUID() },
+                        set: { selectedEventId = $0 }
+                    ))
                 }
             }
             .navigationDestination(for: String.self) { value in

@@ -5,23 +5,24 @@ struct WatchEventRowView: View {
     let timeFormatter: DateFormatter
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(event.typeEmoji)
-                .font(.body)
-
-            Text(event.typeName)
-                .font(.caption2)
-                .fontWeight(.medium)
-                .lineLimit(1)
-
-            Spacer()
-
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                Text(event.typeEmoji)
+                    .font(.body)
+                Text(event.typeName)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+            }
             TimelineView(.periodic(from: .now, by: 1)) { timeline in
                 let seconds = Int(timeline.date.timeIntervalSince(event.timestamp))
-                Text(elapsedText(seconds: seconds))
-                    .font(.caption2)
-                    .foregroundColor(seconds < 120 ? .white : .gray.opacity(0.7))
-                    .monospacedDigit()
+                HStack {
+                    Spacer()
+                    Text(elapsedText(seconds: seconds))
+                        .font(.caption2)
+                        .foregroundColor(seconds < 120 ? .white : .gray.opacity(0.7))
+                        .monospacedDigit()
+                }
             }
         }
     }

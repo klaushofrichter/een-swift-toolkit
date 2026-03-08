@@ -25,6 +25,7 @@ struct ObservationCompanionApp: App {
                     handleIncomingURL(url)
                 }
                 .task {
+                    print("[App] Activating watch manager")
                     watchManager.activate(appState: appState)
                     await checkTokenInjection()
                 }

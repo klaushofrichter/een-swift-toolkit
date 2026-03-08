@@ -81,7 +81,7 @@ struct MainContentView: View {
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .font(.title2)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.red)
                             }
                             .padding(.leading, 8)
                             .accessibilityIdentifier("CloseButton")
