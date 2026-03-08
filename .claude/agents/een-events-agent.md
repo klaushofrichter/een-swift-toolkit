@@ -131,18 +131,41 @@ var params = ListEventsParams(
 params.endTimestampLte = now
 ```
 
-### Include Event Data (Image URLs)
+### Include Event Data
+
+The `include` parameter requests additional data schemas to be returned with events.
+**The include value must use the `data.` prefix** — e.g., schema `een.objectDetection.v1`
+becomes include value `data.een.objectDetection.v1`.
+
 ```swift
 var params = ListEventsParams(...)
-params.include = ["data.een.fullFrameImageUrl.v1"]
+params.include = [
+    "data.een.objectDetection.v1",
+    "data.een.objectClassification.v1",
+    "data.een.fullFrameImageUrl.v1"
+]
 
 let result = try await toolkit.events.list(params: params)
 for event in result.results {
     for dataItem in event.data {
-        if dataItem.type == "een.fullFrameImageUrl.v1",
-           let urlValue = dataItem.additionalProperties?["httpsUrl"],
-           case .string(let imageUrl) = urlValue {
-            // imageUrl is the event thumbnail URL
+        switch dataItem.type {
+        case "een.fullFrameImageUrl.v1":
+            if let urlValue = dataItem.additionalProperties?["httpsUrl"],
+               case .string(let imageUrl) = urlValue {
+                // imageUrl is the event thumbnail URL
+            }
+        case "een.objectDetection.v1":
+            // boundingBox is [x1, y1, x2, y2] in normalized 0-1 coordinates
+            if let bbox = dataItem.additionalProperties?["boundingBox"],
+               case .array(let coords) = bbox, coords.count == 4 {
+                // Extract x1, y1, x2, y2 from coords
+            }
+        case "een.objectClassification.v1":
+            if let label = dataItem.additionalProperties?["label"],
+               case .string(let className) = label {
+                // className is e.g. "Person", "Vehicle"
+            }
+        default: break
         }
     }
 }
@@ -152,16 +175,49 @@ for event in result.results {
 ```swift
 let event = try await toolkit.events.get(
     id: eventId,
-    include: ["data.een.fullFrameImageUrl.v1"]
+    include: ["data.een.objectDetection.v1", "data.een.fullFrameImageUrl.v1"]
 )
 ```
 
 ## Common Include Values for Events
-| Include Value | Description |
-|---|---|
-| `data.een.fullFrameImageUrl.v1` | Full-frame event thumbnail URL |
-| `data.een.boundingBoxSvg.v1` | SVG bounding box overlay |
-| `data.een.objectDetectionData.v1` | Object detection metadata |
+
+| Include Value | Data Type | Key Fields |
+|---|---|---|
+| `data.een.objectDetection.v1` | Bounding box coordinates | `boundingBox: [x1, y1, x2, y2]`, `objectId` |
+| `data.een.objectClassification.v1` | Object classification label | `objectId`, `label`, `confidence` |
+| `data.een.fullFrameImageUrl.v1` | Full-frame event thumbnail | `httpsUrl` |
+| `data.een.croppedFrameImageUrl.v1` | Cropped object thumbnail | `httpsUrl` |
+| `data.een.displayOverlay.boundingBox.v1` | Display overlay data | Bounding box overlay |
+| `data.een.fullFrameImageUrlWithOverlay.v1` | Full-frame with overlay baked in | `httpsUrl` |
+| `data.een.personAttributes.v1` | Person attributes | Various attributes |
+| `data.een.vehicleAttributes.v1` | Vehicle attributes | Various attributes |
+| `data.een.lprDetection.v1` | License plate recognition | Plate data |
+| `data.een.motionRegion.v1` | Motion region data | Region coordinates |
+
+### Bounding Box Data Format
+
+The `een.objectDetection.v1` schema returns `boundingBox` as an array `[x1, y1, x2, y2]`
+where all values are normalized 0-1 coordinates. To get width/height:
+```swift
+// boundingBox = [x1, y1, x2, y2]
+let width = x2 - x1
+let height = y2 - y1
+```
+
+Link `objectId` between `een.objectDetection.v1` and `een.objectClassification.v1` to
+associate bounding boxes with their classification labels.
+
+### Which Events Support Which Schemas
+
+Not all event types support all data schemas. Common detection events and their key schemas:
+- **Motion** (`een.motionDetectionEvent.v1`): objectDetection, fullFrameImageUrl, displayOverlay.boundingBox
+- **Person** (`een.personDetectionEvent.v1`): objectDetection, objectClassification, personAttributes, fullFrameImageUrl
+- **Vehicle** (`een.vehicleDetectionEvent.v1`): objectDetection, objectClassification, vehicleAttributes, fullFrameImageUrl
+- **Animal** (`een.animalDetectionEvent.v1`): objectDetection, objectClassification, animalAttributes, fullFrameImageUrl
+- **LPR** (`een.lprPlateReadEvent.v1`): objectDetection, lprDetection, vehicleAttributes, fullFrameImageUrl
+
+Device status events (e.g., `een.deviceCloudStatusUpdateEvent.v1`) have different schemas
+like `een.deviceCloudStatusUpdate.v1` — they do not have image or detection data.
 
 ## Timestamps
 
@@ -195,8 +251,16 @@ let connection = try await toolkit.eventSubscriptions.connect(id: subscription.i
 // 3. Consume events
 for await event in connection.events {
     print("Event: \(event.type) at \(event.startTimestamp)")
+    // SSE events carry data: [EventData]? — may include bounding boxes etc.
+    if let data = event.data {
+        // Extract bounding boxes, classifications, etc. same as historic events
+    }
 }
 ```
+
+**Note:** SSE subscriptions do not have an `include` parameter. The data schemas returned
+in SSE events are determined by the server. For guaranteed data schema inclusion, use
+`toolkit.events.list(params:)` or `toolkit.events.get(id:include:)` with explicit includes.
 
 ## Constraints
 - The `actor` parameter is **required** for event queries and must use `camera:{id}` format.

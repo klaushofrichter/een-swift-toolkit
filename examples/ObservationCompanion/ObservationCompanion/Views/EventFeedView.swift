@@ -88,13 +88,13 @@ struct EventFeedView: View {
             Divider()
                 .background(Color.gray.opacity(0.3))
 
-            if let event = selectedEvent {
+            if selectedEvent != nil {
                 EventDetailInline(
-                    event: event,
+                    selectedEvent: $selectedEvent,
+                    events: displayedEvents,
                     toolkit: appState.toolkit,
                     cameraId: appState.cameraId,
-                    cameraName: appState.cameraName,
-                    onDismiss: { selectedEvent = nil }
+                    cameraName: appState.cameraName
                 )
             } else if displayedEvents.isEmpty {
                 VStack(spacing: 8) {
@@ -347,11 +347,11 @@ private struct EventRow: View {
 // MARK: - Event Detail
 
 private struct EventDetailInline: View {
-    let event: CameraEvent
+    @Binding var selectedEvent: CameraEvent?
+    let events: [CameraEvent]
     let toolkit: EENToolkit
     let cameraId: String
     let cameraName: String
-    let onDismiss: () -> Void
     @State private var image: UIImage?
     @State private var imageError: String?
     @State private var isLoading = false
@@ -362,8 +362,26 @@ private struct EventDetailInline: View {
         return f
     }()
 
+    private var event: CameraEvent {
+        selectedEvent ?? events.first!
+    }
+
     private var isInternalEvent: Bool {
         event.type.hasPrefix("sse_")
+    }
+
+    private var currentIndex: Int? {
+        events.firstIndex(where: { $0.id == event.id })
+    }
+
+    private var hasPrevious: Bool {
+        guard let idx = currentIndex else { return false }
+        return idx > 0
+    }
+
+    private var hasNext: Bool {
+        guard let idx = currentIndex else { return false }
+        return idx < events.count - 1
     }
 
     var body: some View {
@@ -374,7 +392,13 @@ private struct EventDetailInline: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                 Spacer()
-                Button("Done") { onDismiss() }
+                if let idx = currentIndex {
+                    Text("\(idx + 1)/\(events.count)")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .monospacedDigit()
+                }
+                Button("Done") { selectedEvent = nil }
                     .font(.subheadline)
                     .fontWeight(.semibold)
             }
@@ -426,6 +450,22 @@ private struct EventDetailInline: View {
                         Image(uiImage: image)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
+                            .overlay(
+                                GeometryReader { geo in
+                                    ForEach(Array(event.boundingBoxes.enumerated()), id: \.offset) { _, box in
+                                        Rectangle()
+                                            .stroke(Color.green, lineWidth: 2)
+                                            .frame(
+                                                width: box.width * geo.size.width,
+                                                height: box.height * geo.size.height
+                                            )
+                                            .position(
+                                                x: (box.x + box.width / 2) * geo.size.width,
+                                                y: (box.y + box.height / 2) * geo.size.height
+                                            )
+                                    }
+                                }
+                            )
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     } else if let imageError {
                         VStack(spacing: 8) {
@@ -440,12 +480,107 @@ private struct EventDetailInline: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 20)
                     }
+
+                    // Navigation buttons
+                    if hasPrevious || hasNext {
+                        VStack(spacing: 4) {
+                            HStack {
+                                Button {
+                                    navigatePrevious()
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "chevron.left")
+                                        Text("Newer")
+                                    }
+                                    .font(.subheadline)
+                                    .foregroundColor(hasPrevious ? .blue : .gray.opacity(0.4))
+                                }
+                                .disabled(!hasPrevious)
+
+                                Spacer()
+
+                                Button {
+                                    navigateNext()
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Text("Older")
+                                        Image(systemName: "chevron.right")
+                                    }
+                                    .font(.subheadline)
+                                    .foregroundColor(hasNext ? .blue : .gray.opacity(0.4))
+                                }
+                                .disabled(!hasNext)
+                            }
+                            HStack {
+                                if hasPrevious, let idx = currentIndex {
+                                    Text(Self.timeDelta(from: events[idx - 1].timestamp, to: event.timestamp))
+                                        .font(.caption2)
+                                        .foregroundColor(.gray)
+                                }
+                                Spacer()
+                                if hasNext, let idx = currentIndex {
+                                    Text(Self.timeDelta(from: event.timestamp, to: events[idx + 1].timestamp))
+                                        .font(.caption2)
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                        }
+                    }
                 }
                 .padding()
             }
             .background(Color(white: 0.1))
+            .gesture(
+                DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                    .onEnded { value in
+                        let horizontal = abs(value.translation.width) > abs(value.translation.height)
+                        if horizontal && value.translation.width > 50 {
+                            navigatePrevious()
+                        } else if horizontal && value.translation.width < -50 {
+                            navigateNext()
+                        } else if !horizontal && value.translation.height > 80 {
+                            selectedEvent = nil
+                        }
+                    }
+            )
         }
-        .task { await loadImage() }
+        .task(id: event.id) { await loadImage() }
+    }
+
+    static func timeDelta(from earlier: Date, to later: Date) -> String {
+        let interval = abs(later.timeIntervalSince(earlier))
+        if interval < 1 {
+            let ms = Int(interval * 1000)
+            return "\(ms)ms"
+        } else if interval < 120 {
+            let s = Int(interval)
+            return "\(s)s"
+        } else if interval < 3600 {
+            let m = Int(interval / 60)
+            return "\(m)m"
+        } else if interval < 86400 {
+            let h = Int(interval / 3600)
+            let m = Int(interval.truncatingRemainder(dividingBy: 3600) / 60)
+            return "\(h)h \(m)m"
+        } else {
+            let d = Int(interval / 86400)
+            let h = Int(interval.truncatingRemainder(dividingBy: 86400) / 3600)
+            return "\(d)d \(h)h"
+        }
+    }
+
+    private func navigatePrevious() {
+        guard let idx = currentIndex, idx > 0 else { return }
+        image = nil
+        imageError = nil
+        selectedEvent = events[idx - 1]
+    }
+
+    private func navigateNext() {
+        guard let idx = currentIndex, idx < events.count - 1 else { return }
+        image = nil
+        imageError = nil
+        selectedEvent = events[idx + 1]
     }
 
     private func loadImage() async {
