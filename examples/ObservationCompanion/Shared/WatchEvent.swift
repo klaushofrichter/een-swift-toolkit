@@ -34,6 +34,17 @@ struct WatchEvent: Codable, Identifiable {
     let timestamp: Date
     let boundingBoxes: [WatchBoundingBox]
     let eevaReason: String?
+    let confidences: [Double]
+
+    var confidenceText: String? {
+        guard !confidences.isEmpty else { return nil }
+        if confidences.count == 1 {
+            return String(format: "%.0f%% Confidence", confidences[0] * 100)
+        }
+        let lo = confidences.min()!
+        let hi = confidences.max()!
+        return String(format: "%.0f%% to %.0f%% Confidence", lo * 100, hi * 100)
+    }
 
     var dictionary: [String: Any] {
         var dict: [String: Any] = [
@@ -48,10 +59,11 @@ struct WatchEvent: Codable, Identifiable {
             "boundingBoxes": boundingBoxes.map { $0.dictionary }
         ]
         if let eevaReason { dict["eevaReason"] = eevaReason }
+        if !confidences.isEmpty { dict["confidences"] = confidences }
         return dict
     }
 
-    init(id: UUID = UUID(), eventType: String, typeEmoji: String, typeName: String, description: String, cameraName: String, cameraId: String, timestamp: Date, boundingBoxes: [WatchBoundingBox] = [], eevaReason: String? = nil) {
+    init(id: UUID = UUID(), eventType: String, typeEmoji: String, typeName: String, description: String, cameraName: String, cameraId: String, timestamp: Date, boundingBoxes: [WatchBoundingBox] = [], eevaReason: String? = nil, confidences: [Double] = []) {
         self.id = id
         self.eventType = eventType
         self.typeEmoji = typeEmoji
@@ -62,6 +74,7 @@ struct WatchEvent: Codable, Identifiable {
         self.timestamp = timestamp
         self.boundingBoxes = boundingBoxes
         self.eevaReason = eevaReason
+        self.confidences = confidences
     }
 
     init?(dictionary: [String: Any]) {
@@ -90,5 +103,6 @@ struct WatchEvent: Codable, Identifiable {
             self.boundingBoxes = []
         }
         self.eevaReason = dictionary["eevaReason"] as? String
+        self.confidences = dictionary["confidences"] as? [Double] ?? []
     }
 }

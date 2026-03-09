@@ -24,7 +24,6 @@ class WatchConnectivityManager: NSObject, ObservableObject {
     private func addEvent(_ event: WatchEvent, isLive: Bool) {
         // If camera changed, clear old events
         if !event.cameraId.isEmpty && !events.isEmpty && events.first?.cameraId != event.cameraId {
-            NSLog("[WatchConnectivity] Camera changed from events, clearing old events")
             events.removeAll()
             cameraChangeCount += 1
         }
@@ -51,7 +50,6 @@ class WatchConnectivityManager: NSObject, ObservableObject {
         liveImageCompletion = completion
         let message: [String: Any] = ["request": "liveImage", "cameraId": cameraId]
         WCSession.default.sendMessage(message, replyHandler: nil) { [weak self] error in
-            NSLog("[WatchConnectivity] Live image request failed: %@", error.localizedDescription)
             Task { @MainActor in
                 self?.liveImageCompletion?(nil)
                 self?.liveImageCompletion = nil
@@ -75,8 +73,7 @@ class WatchConnectivityManager: NSObject, ObservableObject {
             } else {
                 completion(nil)
             }
-        }, errorHandler: { error in
-            NSLog("[WatchConnectivity] Image request failed: %@", error.localizedDescription)
+        }, errorHandler: { _ in
             completion(nil)
         })
     }
@@ -90,22 +87,17 @@ extension WatchConnectivityManager: WCSessionDelegate {
                 requestSync()
             }
         }
-        if let error = error {
-            NSLog("[WatchConnectivity] Activation failed: %@", error.localizedDescription)
-        }
+        _ = error
     }
 
     nonisolated func session(_ session: WCSession, didReceiveMessageData messageData: Data) {
         Task { @MainActor in
-            NSLog("[WatchConnectivity] Received messageData: %d bytes", messageData.count)
             liveImageCompletion?(messageData)
             liveImageCompletion = nil
         }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
-        NSLog("[WatchConnectivity] Received message keys: %@", Array(message.keys).joined(separator: ", "))
-
         if let errorMsg = message["liveImageError"] as? String {
             Task { @MainActor in
                 liveImageCompletion?(nil)
@@ -116,7 +108,6 @@ extension WatchConnectivityManager: WCSessionDelegate {
         }
 
         if message["cameraChange"] as? Bool == true {
-            NSLog("[WatchConnectivity] Camera change received: %@", message["cameraName"] as? String ?? "unknown")
             Task { @MainActor in
                 if let name = message["cameraName"] as? String {
                     cameraName = name
@@ -161,8 +152,6 @@ extension WatchConnectivityManager: WCSessionDelegate {
 
     private func requestSync() {
         guard WCSession.default.isReachable else { return }
-        WCSession.default.sendMessage(["request": "sync"], replyHandler: nil) { error in
-            NSLog("[WatchConnectivity] Sync request failed: %@", error.localizedDescription)
-        }
+        WCSession.default.sendMessage(["request": "sync"], replyHandler: nil, errorHandler: nil)
     }
 }

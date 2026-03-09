@@ -79,14 +79,17 @@ struct CameraEvent: Identifiable, Equatable {
     }
 
     /// Format confidence values for display.
+    /// Shows bounding box count when there are multiple boxes.
     var confidenceText: String? {
         guard !confidences.isEmpty else { return nil }
-        if confidences.count == 1 {
-            return String(format: "%.1f%% confidence", confidences[0] * 100)
-        }
+        let boxCount = boundingBoxes.count
+        let suffix = boxCount > 1 ? " (\(boxCount))" : ""
         let lo = confidences.min()!
         let hi = confidences.max()!
-        return String(format: "%.1f%% to %.1f%% confidence", lo * 100, hi * 100)
+        if confidences.count == 1 || lo == hi {
+            return String(format: "%.1f%% confidence", lo * 100) + suffix
+        }
+        return String(format: "%.1f%% to %.1f%% confidence", lo * 100, hi * 100) + suffix
     }
 
     private static func doubleValue(_ value: AnyCodable) -> Double? {

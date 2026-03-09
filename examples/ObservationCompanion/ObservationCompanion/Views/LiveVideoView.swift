@@ -12,6 +12,7 @@ struct LiveVideoView: View {
                 if appState.isVideoPlaying, let player = appState.hlsPlayer {
                     VideoPlayerView(player: player)
                         .frame(width: geometry.size.width, height: geometry.size.height)
+                        .overlay(boundingBoxOverlay(size: geometry.size))
                 }
 
                 if !appState.isVideoPlaying && appState.videoError == nil {
@@ -51,10 +52,11 @@ struct LiveVideoView: View {
                                 Circle()
                                     .fill(Color.green)
                                     .frame(width: 8, height: 8)
-                                Text("LIVE HD")
+                                Text("LIVE HD \(Int(appState.hlsLatency))s")
                                     .font(.caption2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.white)
+                                    .monospacedDigit()
                             }
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -67,6 +69,42 @@ struct LiveVideoView: View {
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func boundingBoxOverlay(size: CGSize) -> some View {
+        let boxes = appState.liveBoundingBoxes
+        if !boxes.isEmpty {
+            let videoRect = Self.videoRect(viewSize: size)
+            ZStack {
+                ForEach(Array(boxes.enumerated()), id: \.offset) { _, box in
+                    Circle()
+                        .stroke(Color.green, lineWidth: 2)
+                        .frame(
+                            width: min(box.width * videoRect.width, box.height * videoRect.height),
+                            height: min(box.width * videoRect.width, box.height * videoRect.height)
+                        )
+                        .position(
+                            x: videoRect.minX + (box.x + box.width / 2) * videoRect.width,
+                            y: videoRect.minY + (box.y + box.height / 2) * videoRect.height
+                        )
+                }
+            }
+        }
+    }
+
+    private static func videoRect(viewSize: CGSize) -> CGRect {
+        let videoAspect: CGFloat = 16.0 / 9.0
+        let viewAspect = viewSize.width / viewSize.height
+        if viewAspect > videoAspect {
+            let h = viewSize.height
+            let w = h * videoAspect
+            return CGRect(x: (viewSize.width - w) / 2, y: 0, width: w, height: h)
+        } else {
+            let w = viewSize.width
+            let h = w / videoAspect
+            return CGRect(x: 0, y: (viewSize.height - h) / 2, width: w, height: h)
         }
     }
 }

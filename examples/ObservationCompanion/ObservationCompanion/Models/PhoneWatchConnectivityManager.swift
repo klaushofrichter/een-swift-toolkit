@@ -19,13 +19,10 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
         guard !isActivated else { return }
         isActivated = true
         self.appState = appState
-        let supported = WCSession.isSupported()
-        NSLog("[WatchConnectivity] activate called, WCSession.isSupported: %@", supported ? "yes" : "no")
-        guard supported else { return }
+        guard WCSession.isSupported() else { return }
         session = WCSession.default
         session?.delegate = self
         session?.activate()
-        NSLog("[WatchConnectivity] Session activated, subscribing to appState publishers")
 
         appState.$events
             .receive(on: DispatchQueue.main)
@@ -38,7 +35,6 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
         appState.$cameraName
             .receive(on: DispatchQueue.main)
             .sink { [weak self] name in
-                NSLog("[WatchConnectivity] cameraName publisher fired: '%@'", name)
                 self?.handleCameraChange(cameraName: name)
             }
             .store(in: &cancellables)
@@ -57,7 +53,6 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
 
         // Detect camera change when we have events and camera name is ready
         if !events.isEmpty && cameraName != lastSentCameraName {
-            NSLog("[WatchConnectivity] Camera name changed to '%@', sending cameraChange", cameraName)
             lastSentCameraName = cameraName
             handleCameraChange(cameraName: cameraName)
         }
@@ -85,12 +80,11 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
                 cameraId: cameraId,
                 timestamp: event.timestamp,
                 boundingBoxes: boxes,
-                eevaReason: event.eevaReason
+                eevaReason: event.eevaReason,
+                confidences: event.confidences
             ).dictionary
             message["isLive"] = isLive
-            session.sendMessage(message, replyHandler: nil) { error in
-                print("[WatchConnectivity] Send failed: \(error.localizedDescription)")
-            }
+            session.sendMessage(message, replyHandler: nil, errorHandler: nil)
         }
 
         // Prewarm image pipeline with an older event
@@ -108,9 +102,7 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
         guard newFilter != activeEventTypes else { return }
         activeEventTypes = newFilter
         guard let session = session, session.isReachable else { return }
-        session.sendMessage(["filterChange": true, "activeTypes": types], replyHandler: nil) { error in
-            print("[WatchConnectivity] Filter change send failed: \(error.localizedDescription)")
-        }
+        session.sendMessage(["filterChange": true, "activeTypes": types], replyHandler: nil, errorHandler: nil)
     }
 
     private func handleSyncRequest() {
@@ -120,17 +112,10 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
         let events = appState.events
 
         // Don't sync if the phone hasn't loaded a camera yet
-        guard !cameraName.isEmpty, !cameraId.isEmpty else {
-            NSLog("[WatchConnectivity] Sync requested but camera not ready yet")
-            return
-        }
-
-        NSLog("[WatchConnectivity] Sync: sending cameraChange + %d events for %@", events.count, cameraName)
+        guard !cameraName.isEmpty, !cameraId.isEmpty else { return }
 
         // Send camera change to clear Watch state and set correct camera name
-        session.sendMessage(["cameraChange": true, "cameraName": cameraName], replyHandler: nil) { error in
-            NSLog("[WatchConnectivity] Sync cameraChange send failed: %@", error.localizedDescription)
-        }
+        session.sendMessage(["cameraChange": true, "cameraName": cameraName], replyHandler: nil, errorHandler: nil)
         try? session.updateApplicationContext(["cameraName": cameraName])
         lastSentCameraName = cameraName
 
@@ -151,12 +136,11 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
                 cameraId: cameraId,
                 timestamp: event.timestamp,
                 boundingBoxes: boxes,
-                eevaReason: event.eevaReason
+                eevaReason: event.eevaReason,
+                confidences: event.confidences
             ).dictionary
             message["isLive"] = false
-            session.sendMessage(message, replyHandler: nil) { error in
-                print("[WatchConnectivity] Sync event send failed: \(error.localizedDescription)")
-            }
+            session.sendMessage(message, replyHandler: nil, errorHandler: nil)
         }
 
         // Mark these as known so they don't get re-sent
@@ -165,18 +149,12 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
 
     private func handleCameraChange(cameraName: String) {
         guard !cameraName.isEmpty else { return }
-        guard let session = session, session.activationState == .activated else {
-            NSLog("[WatchConnectivity] Camera change skipped: session not activated")
-            return
-        }
-        NSLog("[WatchConnectivity] Camera change: %@, reachable: %@", cameraName, session.isReachable ? "yes" : "no")
+        guard let session = session, session.activationState == .activated else { return }
         try? session.updateApplicationContext(["cameraName": cameraName])
         previousEventIds.removeAll()
         prewarmCameraId = nil
         if session.isReachable {
-            session.sendMessage(["cameraChange": true, "cameraName": cameraName], replyHandler: nil) { error in
-                NSLog("[WatchConnectivity] Camera change send failed: %@", error.localizedDescription)
-            }
+            session.sendMessage(["cameraChange": true, "cameraName": cameraName], replyHandler: nil, errorHandler: nil)
         }
     }
 
@@ -189,7 +167,6 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
             params.type = .preview
             params.targetWidth = 312
             _ = try? await appState.toolkit.media.getRecordedImage(deviceId: cameraId, params: params)
-            print("[WatchConnectivity] Image pipeline prewarmed for camera \(cameraId)")
         }
     }
 
@@ -227,18 +204,13 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
             session?.sendMessage(["liveImageError": "No camera"], replyHandler: nil, errorHandler: nil)
             return
         }
-        NSLog("[WatchConnectivity] Fetching live image for camera %@", cameraId)
         Task {
             do {
                 let params = GetLiveImageParams(deviceId: cameraId, type: "preview")
                 let result = try await appState.toolkit.media.getLiveImage(params: params)
                 let resized = Self.resizeImageData(result.imageData, targetSize: 50_000)
-                NSLog("[WatchConnectivity] Sending live image to Watch via messageData: %d bytes", resized.count)
-                session?.sendMessageData(resized, replyHandler: nil) { error in
-                    NSLog("[WatchConnectivity] Failed to send live image data: %@", error.localizedDescription)
-                }
+                session?.sendMessageData(resized, replyHandler: nil, errorHandler: nil)
             } catch {
-                NSLog("[WatchConnectivity] Live image error: %@", error.localizedDescription)
                 session?.sendMessage(["liveImageError": error.localizedDescription], replyHandler: nil, errorHandler: nil)
             }
         }
@@ -276,9 +248,7 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
 
 extension PhoneWatchConnectivityManager: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
-        if let error = error {
-            print("[WatchConnectivity] Activation failed: \(error.localizedDescription)")
-        }
+        _ = error
         if activationState == .activated {
             Task { @MainActor in
                 if let name = appState?.cameraName, !name.isEmpty {

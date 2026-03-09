@@ -4,6 +4,12 @@ struct WatchEventRowView: View {
     let event: WatchEvent
     let timeFormatter: DateFormatter
 
+    private static let hhmmFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
@@ -17,6 +23,10 @@ struct WatchEventRowView: View {
             TimelineView(.periodic(from: .now, by: 1)) { timeline in
                 let seconds = Int(timeline.date.timeIntervalSince(event.timestamp))
                 HStack {
+                    Text(Self.hhmmFormatter.string(from: event.timestamp))
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                        .monospacedDigit()
                     Spacer()
                     Text(elapsedText(seconds: seconds))
                         .font(.caption2)

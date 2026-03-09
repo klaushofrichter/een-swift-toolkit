@@ -62,6 +62,8 @@ class AppState: ObservableObject {
     @Published var historyDuration: TimeInterval = 86400
     @Published var isMuted: Bool = true
     @Published var showSSEEvents: Bool = false
+    @Published var liveBoundingBoxes: [BoundingBox] = []
+    @Published var hlsLatency: TimeInterval = 5.0
 
     // HLS player
     @Published var hlsPlayer: AVPlayer?
@@ -74,6 +76,10 @@ class AppState: ObservableObject {
     let toolkit: EENToolkit
 
     private var tokenTimer: Timer?
+    private var latencyTimer: Timer?
+    private var overlayTimer: Timer?
+    private var overlayQueue: [(boxes: [BoundingBox], showAt: Date, hideAt: Date)] = []
+    private static let maxPendingOverlays = 10
     private var sseConnection: SSEConnection?
     private var subscriptionId: String?
     private var playerObservation: NSKeyValueObservation?
@@ -84,6 +90,8 @@ class AppState: ObservableObject {
 
     deinit {
         tokenTimer?.invalidate()
+        latencyTimer?.invalidate()
+        overlayTimer?.invalidate()
         sseConnection?.close()
         hlsPlayer?.pause()
         playerObservation?.invalidate()
@@ -274,6 +282,74 @@ class AppState: ObservableObject {
         self.isVideoPlaying = false
         self.videoError = nil
         player.play()
+        startLatencyMeasurement()
+    }
+
+    private func startLatencyMeasurement() {
+        latencyTimer?.invalidate()
+        latencyTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.measureLatency()
+            }
+        }
+    }
+
+    private func measureLatency() {
+        guard let item = hlsPlayer?.currentItem,
+              item.status == .readyToPlay,
+              let programDate = item.currentDate() else { return }
+        let latency = Date().timeIntervalSince(programDate)
+        if latency > 0 && latency < 60 {
+            hlsLatency = latency
+        }
+    }
+
+    // MARK: - Bounding Box Overlay Queue
+
+    private func scheduleOverlay(boxes: [BoundingBox]) {
+        let showDelay = max(hlsLatency, 0.5)
+        let now = Date()
+        let showAt = now.addingTimeInterval(showDelay)
+        let hideAt = showAt.addingTimeInterval(1.0)
+        overlayQueue.append((boxes: boxes, showAt: showAt, hideAt: hideAt))
+
+        // Evict oldest if over capacity
+        if overlayQueue.count > Self.maxPendingOverlays {
+            overlayQueue.removeFirst()
+        }
+
+        // Start tick timer if not running
+        if overlayTimer == nil {
+            overlayTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.tickOverlays()
+                }
+            }
+        }
+    }
+
+    private func tickOverlays() {
+        let now = Date()
+
+        // Remove expired entries
+        overlayQueue.removeAll { now >= $0.hideAt }
+
+        // Find the latest entry that should be visible now
+        let visible = overlayQueue.last { now >= $0.showAt && now < $0.hideAt }
+        liveBoundingBoxes = visible?.boxes ?? []
+
+        // Stop timer if queue is empty
+        if overlayQueue.isEmpty {
+            overlayTimer?.invalidate()
+            overlayTimer = nil
+        }
+    }
+
+    private func cancelPendingOverlays() {
+        overlayTimer?.invalidate()
+        overlayTimer = nil
+        overlayQueue.removeAll()
+        liveBoundingBoxes = []
     }
 
     // MARK: - SSE Events
@@ -367,6 +443,10 @@ class AppState: ObservableObject {
         )
         insertEvent(event)
 
+        if !boxes.isEmpty {
+            scheduleOverlay(boxes: boxes)
+        }
+
         if !event.type.hasPrefix("sse_") && !isMuted {
             SoundPlayer.shared.play()
         }
@@ -427,6 +507,9 @@ class AppState: ObservableObject {
         hlsPlayer?.pause()
         hlsPlayer = nil
         playerObservation?.invalidate()
+        latencyTimer?.invalidate()
+        latencyTimer = nil
+        cancelPendingOverlays()
         isVideoPlaying = false
         videoError = nil
         events = []
@@ -480,6 +563,9 @@ class AppState: ObservableObject {
             tokenSecondsRemaining = 0
             tokenTimer?.invalidate()
             tokenTimer = nil
+            latencyTimer?.invalidate()
+            latencyTimer = nil
+            cancelPendingOverlays()
             hlsPlayer?.pause()
             sseConnection?.close()
             connectionState = .expired
@@ -539,6 +625,9 @@ class AppState: ObservableObject {
     private func cleanup() {
         tokenTimer?.invalidate()
         tokenTimer = nil
+        latencyTimer?.invalidate()
+        latencyTimer = nil
+        cancelPendingOverlays()
         sseConnection?.close()
         sseConnection = nil
         hlsPlayer?.pause()

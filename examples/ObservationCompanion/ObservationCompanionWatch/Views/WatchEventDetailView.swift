@@ -77,6 +77,15 @@ struct WatchEventDetailView: View {
                             .font(.caption2)
                             .foregroundColor(.orange)
                     }
+
+                    if let confidence = event.confidenceText {
+                        Divider()
+                        Label(confidence, systemImage: "sparkle.magnifyingglass")
+                            .font(.caption2)
+                            .foregroundColor(.yellow)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
