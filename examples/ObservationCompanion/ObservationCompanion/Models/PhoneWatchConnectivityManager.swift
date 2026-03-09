@@ -84,7 +84,8 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
                 cameraName: cameraName,
                 cameraId: cameraId,
                 timestamp: event.timestamp,
-                boundingBoxes: boxes
+                boundingBoxes: boxes,
+                eevaReason: event.eevaReason
             ).dictionary
             message["isLive"] = isLive
             session.sendMessage(message, replyHandler: nil) { error in
@@ -149,7 +150,8 @@ class PhoneWatchConnectivityManager: NSObject, ObservableObject {
                 cameraName: cameraName,
                 cameraId: cameraId,
                 timestamp: event.timestamp,
-                boundingBoxes: boxes
+                boundingBoxes: boxes,
+                eevaReason: event.eevaReason
             ).dictionary
             message["isLive"] = false
             session.sendMessage(message, replyHandler: nil) { error in

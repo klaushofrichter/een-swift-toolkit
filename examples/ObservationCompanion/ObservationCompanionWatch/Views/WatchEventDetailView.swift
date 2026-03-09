@@ -70,6 +70,13 @@ struct WatchEventDetailView: View {
                             .font(.caption2)
                             .foregroundColor(seconds < 120 ? .white : .gray)
                     }
+
+                    if let reason = event.eevaReason {
+                        Divider()
+                        Label(reason, systemImage: "brain")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

@@ -33,9 +33,10 @@ struct WatchEvent: Codable, Identifiable {
     let cameraId: String
     let timestamp: Date
     let boundingBoxes: [WatchBoundingBox]
+    let eevaReason: String?
 
     var dictionary: [String: Any] {
-        [
+        var dict: [String: Any] = [
             "id": id.uuidString,
             "eventType": eventType,
             "typeEmoji": typeEmoji,
@@ -46,9 +47,11 @@ struct WatchEvent: Codable, Identifiable {
             "timestamp": timestamp.timeIntervalSince1970,
             "boundingBoxes": boundingBoxes.map { $0.dictionary }
         ]
+        if let eevaReason { dict["eevaReason"] = eevaReason }
+        return dict
     }
 
-    init(id: UUID = UUID(), eventType: String, typeEmoji: String, typeName: String, description: String, cameraName: String, cameraId: String, timestamp: Date, boundingBoxes: [WatchBoundingBox] = []) {
+    init(id: UUID = UUID(), eventType: String, typeEmoji: String, typeName: String, description: String, cameraName: String, cameraId: String, timestamp: Date, boundingBoxes: [WatchBoundingBox] = [], eevaReason: String? = nil) {
         self.id = id
         self.eventType = eventType
         self.typeEmoji = typeEmoji
@@ -58,6 +61,7 @@ struct WatchEvent: Codable, Identifiable {
         self.cameraId = cameraId
         self.timestamp = timestamp
         self.boundingBoxes = boundingBoxes
+        self.eevaReason = eevaReason
     }
 
     init?(dictionary: [String: Any]) {
@@ -85,5 +89,6 @@ struct WatchEvent: Codable, Identifiable {
         } else {
             self.boundingBoxes = []
         }
+        self.eevaReason = dictionary["eevaReason"] as? String
     }
 }
