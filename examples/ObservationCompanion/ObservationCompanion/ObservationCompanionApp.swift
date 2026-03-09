@@ -12,7 +12,7 @@ struct ObservationCompanionApp: App {
             clientId: AppConfig.clientId,
             redirectUri: AppConfig.redirectUri,
             storageStrategy: .keychain,
-            debug: true
+            debug: false
         ))
         _appState = StateObject(wrappedValue: AppState(toolkit: toolkit))
     }

@@ -351,13 +351,19 @@ class AppState: ObservableObject {
         let description = EventTypeHash.eventDescription(type: sseEvent.type, startTimestamp: sseEvent.startTimestamp)
         let date = EventTypeHash.isoFormatter.date(from: sseEvent.startTimestamp) ?? Date()
         let boxes = sseEvent.data.map { CameraEvent.extractBoundingBoxes(from: $0) } ?? []
+        let reason: String? = (sseEvent.type == "een.eevaQueryEvent.v1")
+            ? sseEvent.data.flatMap { CameraEvent.extractEevaReason(from: $0) }
+            : nil
+        let confidences = sseEvent.data.map { CameraEvent.extractConfidences(from: $0) } ?? []
         let event = CameraEvent(
             type: sseEvent.type,
             actorId: sseEvent.actorId,
             description: description,
             timestamp: date,
             eventId: sseEvent.id,
-            boundingBoxes: boxes
+            boundingBoxes: boxes,
+            eevaReason: reason,
+            confidences: confidences
         )
         insertEvent(event)
 
@@ -381,7 +387,7 @@ class AppState: ObservableObject {
             )
             params.startTimestampLte = endTime
             params.sort = "-startTimestamp"
-            params.include = ["data.een.objectDetection.v1", "data.een.objectClassification.v1"]
+            params.include = EventDataSchemas.includeParameters(for: activeEventTypes)
 
             let result = try await toolkit.events.list(params: params)
             let historyEvents = result.results.map { apiEvent in
@@ -391,7 +397,9 @@ class AppState: ObservableObject {
                     description: EventTypeHash.eventDescription(type: apiEvent.type, startTimestamp: apiEvent.startTimestamp),
                     timestamp: EventTypeHash.isoFormatter.date(from: apiEvent.startTimestamp) ?? Date(),
                     eventId: apiEvent.id,
-                    boundingBoxes: CameraEvent.extractBoundingBoxes(from: apiEvent.data)
+                    boundingBoxes: CameraEvent.extractBoundingBoxes(from: apiEvent.data),
+                    eevaReason: apiEvent.type == "een.eevaQueryEvent.v1" ? CameraEvent.extractEevaReason(from: apiEvent.data) : nil,
+                    confidences: CameraEvent.extractConfidences(from: apiEvent.data)
                 )
             }
             mergeEvents(historyEvents)

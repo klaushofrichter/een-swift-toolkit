@@ -17,8 +17,10 @@ struct CameraEvent: Identifiable, Equatable {
     let description: String
     let raw: String
     let boundingBoxes: [BoundingBox]
+    let eevaReason: String?
+    let confidences: [Double]
 
-    init(type: String, actorId: String, description: String, raw: String = "", timestamp: Date = Date(), eventId: String? = nil, boundingBoxes: [BoundingBox] = []) {
+    init(type: String, actorId: String, description: String, raw: String = "", timestamp: Date = Date(), eventId: String? = nil, boundingBoxes: [BoundingBox] = [], eevaReason: String? = nil, confidences: [Double] = []) {
         self.id = UUID()
         self.eventId = eventId
         self.timestamp = timestamp
@@ -27,6 +29,8 @@ struct CameraEvent: Identifiable, Equatable {
         self.description = description
         self.raw = raw
         self.boundingBoxes = boundingBoxes
+        self.eevaReason = eevaReason
+        self.confidences = confidences
     }
 
     /// Extract bounding boxes from event data items.
@@ -46,6 +50,43 @@ struct CameraEvent: Identifiable, Equatable {
             boxes.append(BoundingBox(x: x1, y: y1, width: x2 - x1, height: y2 - y1))
         }
         return boxes
+    }
+
+    /// Extract the EEVA reason from an `een.eevaAttributes.v1` data item, if present.
+    static func extractEevaReason(from data: [EventData]) -> String? {
+        for eventData in data {
+            guard eventData.type == "een.eevaAttributes.v1",
+                  let props = eventData.additionalProperties,
+                  let reason = props["reason"],
+                  case .string(let value) = reason,
+                  !value.isEmpty else { continue }
+            return value
+        }
+        return nil
+    }
+
+    /// Extract confidence values from `een.objectClassification.v1` data items.
+    static func extractConfidences(from data: [EventData]) -> [Double] {
+        var values: [Double] = []
+        for eventData in data {
+            guard eventData.type == "een.objectClassification.v1",
+                  let props = eventData.additionalProperties,
+                  let conf = props["confidence"],
+                  let value = doubleValue(conf) else { continue }
+            values.append(value)
+        }
+        return values
+    }
+
+    /// Format confidence values for display.
+    var confidenceText: String? {
+        guard !confidences.isEmpty else { return nil }
+        if confidences.count == 1 {
+            return String(format: "%.1f%% confidence", confidences[0] * 100)
+        }
+        let lo = confidences.min()!
+        let hi = confidences.max()!
+        return String(format: "%.1f%% to %.1f%% confidence", lo * 100, hi * 100)
     }
 
     private static func doubleValue(_ value: AnyCodable) -> Double? {

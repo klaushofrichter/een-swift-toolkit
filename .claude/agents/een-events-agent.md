@@ -41,6 +41,8 @@ assistant: "I'll use the een-events-agent to set up event subscriptions and SSE 
 - Sources/EENApiToolkit/Models/Event.swift
 - Sources/EENApiToolkit/Models/EventSubscription.swift
 - Sources/EENApiToolkit/SSE/SSEClient.swift
+- examples/ObservationCompanion/ObservationCompanion/Models/EventDataSchemas.swift (event type → data schema mapping)
+- examples/ObservationCompanion/ObservationCompanion/Models/CameraEvent.swift (app event model with data extraction helpers)
 
 ## Reference
 - Tests/EENApiToolkitTests/Integration/LiveServiceTests.swift (working examples)
@@ -194,23 +196,76 @@ let event = try await toolkit.events.get(
 | `data.een.lprDetection.v1` | License plate recognition | Plate data |
 | `data.een.motionRegion.v1` | Motion region data | Region coordinates |
 
-### Bounding Box Data Format
+### Key Data Fields by Schema
 
-The `een.objectDetection.v1` schema returns `boundingBox` as an array `[x1, y1, x2, y2]`
-where all values are normalized 0-1 coordinates. To get width/height:
+#### `een.objectDetection.v1` — Bounding Boxes
+Returns `boundingBox` as `[x1, y1, x2, y2]` (normalized 0-1 coordinates):
 ```swift
-// boundingBox = [x1, y1, x2, y2]
 let width = x2 - x1
 let height = y2 - y1
 ```
-
 Link `objectId` between `een.objectDetection.v1` and `een.objectClassification.v1` to
 associate bounding boxes with their classification labels.
 
+#### `een.objectClassification.v1` — Classification & Confidence
+```swift
+// confidence is a Double between 0 and 1
+if let conf = dataItem.additionalProperties?["confidence"],
+   case .double(let value) = conf {
+    let percent = value * 100  // e.g. 92.6%
+}
+if let cls = dataItem.additionalProperties?["class"],
+   case .string(let className) = cls {
+    // className is e.g. "person", "vehicle"
+}
+```
+Multiple data items of this type may exist per event (one per detected object).
+
+#### `een.eevaAttributes.v1` — EEVA Query Reason
+Present on `een.eevaQueryEvent.v1` events. Contains the AI reasoning:
+```swift
+if let reason = dataItem.additionalProperties?["reason"],
+   case .string(let value) = reason {
+    // e.g. "a person in the foreground is wearing dark pants"
+}
+// Also contains: query, queryType, binaryResponse, objectId
+```
+
+#### `een.personAttributes.v1` — Person Attributes
+```swift
+// Fields: gender, genderConfidence, stationary, stationaryConfidence,
+// upperBodyClothingColor, upperBodyClothingColorConfidence,
+// lowerBodyClothingColor, lowerBodyClothingColorConfidence
+```
+
+### Dynamic Include Parameters (ObservationCompanion)
+
+The ObservationCompanion app uses `EventDataSchemas` (in `Models/EventDataSchemas.swift`)
+to dynamically build the `include` parameter based on the camera's active event types:
+```swift
+// Discover which event types the camera supports
+let fieldValues = try await toolkit.events.listFieldValues(actor: "camera:\(cameraId)")
+let activeTypes = fieldValues.type
+
+// Build include parameter — only includes schemas relevant to the camera's event types
+let include = EventDataSchemas.includeParameters(for: activeTypes)
+// Returns e.g. ["data.een.objectDetection.v1", "data.een.eevaAttributes.v1", ...]
+
+var params = ListEventsParams(...)
+params.include = include
+```
+
+This is the complete static mapping ported from the TypeScript toolkit's `dataSchemas.ts`.
+For unknown event types (not in the mapping), no include values are generated — the API
+simply returns the event without additional data.
+
 ### Which Events Support Which Schemas
 
-Not all event types support all data schemas. The full mapping is in the TypeScript toolkit
-at `../een-api-toolkit/src/events/dataSchemas.ts`. Key detection events and their schemas:
+Not all event types support all data schemas. The full mapping is available in:
+- **Swift (ObservationCompanion):** `examples/ObservationCompanion/ObservationCompanion/Models/EventDataSchemas.swift`
+- **TypeScript:** `../een-api-toolkit/src/events/dataSchemas.ts`
+
+Key detection events and their schemas:
 - **Motion** (`een.motionDetectionEvent.v1`): objectDetection, fullFrameImageUrl, croppedFrameImageUrl, displayOverlay.boundingBox, fullFrameImageUrlWithOverlay
 - **Motion In Region** (`een.motionInRegionDetectionEvent.v1`): motionRegion, objectDetection, fullFrameImageUrl, croppedFrameImageUrl, displayOverlay.boundingBox, fullFrameImageUrlWithOverlay
 - **Person** (`een.personDetectionEvent.v1`): objectDetection, personAttributes, fullFrameImageUrl, croppedFrameImageUrl, objectClassification, objectRegionMapping, displayOverlay.boundingBox, fullFrameImageUrlWithOverlay, geoLocation

@@ -311,16 +311,31 @@ private struct EventRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
+        HStack(alignment: .top, spacing: 8) {
             Text(event.typeEmoji)
                 .font(.body)
 
-            Text(EventTypeHash.displayName(event.type))
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundColor(.white)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(EventTypeHash.displayName(event.type))
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+                if let confidence = event.confidenceText {
+                    Text(confidence)
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+                if let reason = event.eevaReason {
+                    Text(reason)
+                        .font(.caption2)
+                        .foregroundColor(.gray.opacity(0.7))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+            .layoutPriority(0)
 
-            Spacer()
+            Spacer(minLength: 4)
 
             VStack(alignment: .trailing, spacing: 1) {
                 Text(timeFormatter.string(from: event.timestamp))
@@ -335,6 +350,8 @@ private struct EventRow: View {
                         .monospacedDigit()
                 }
             }
+            .layoutPriority(1)
+            .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -516,6 +533,12 @@ private struct EventDetailInline: View {
                                         .foregroundColor(seconds < 120 ? .white : .gray.opacity(0.7))
                                 }
                             }
+                        }
+                        if let reason = event.eevaReason {
+                            DetailRow(label: "Reason", value: reason)
+                        }
+                        if let confidence = event.confidenceText {
+                            DetailRow(label: "Confidence", value: confidence)
                         }
                         DetailRow(label: "Actor", value: cameraName)
                         if let eventId = event.eventId {

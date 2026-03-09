@@ -228,8 +228,8 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				031EB2722F578000000A3337 /* ObservationCompanionWatch */,
 				031EB2702F578000000A3337 /* Shared */,
+				031EB2722F578000000A3337 /* ObservationCompanionWatch */,
 			);
 			name = ObservationCompanionWatch;
 			packageProductDependencies = (

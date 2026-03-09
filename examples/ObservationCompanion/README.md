@@ -12,10 +12,13 @@ A SwiftUI iOS app for real-time camera event monitoring using the [EENApiToolkit
 - **Live HLS video** — streaming via AVPlayer with "LIVE HD" badge
 - **SSE event streaming** — real-time event feed via Server-Sent Events
 - **Event history** — loads up to 250 recent events on connect (configurable duration)
-- **Event detail view** — tap an event to see recorded image with bounding box overlay
+- **Event detail view** — tap an event to see recorded image with bounding box overlay, EEVA reason, confidence scores
 - **Recorded video playback** — play recorded HLS video at event timestamp with timeline scrubber
 - **Event navigation** — Older/Newer buttons with time deltas, swipe left/right gestures
 - **Event type icons** — 56 EEN event types mapped to specific emoji icons, green border when bounding boxes present
+- **Event data enrichment** — dynamic `include` parameters per camera based on event type to data schema mapping
+- **EEVA AI reasoning** — shows the AI-generated reason for EEVA query events (`een.eevaQueryEvent.v1`)
+- **Detection confidence** — displays object classification confidence percentages from `een.objectClassification.v1`
 - **Event type filtering** — toggle event types, shows hashed short codes
 - **Camera switching** — switch between cameras on the same account
 - **Landscape mode** — 50/50 split between live video and event feed
@@ -39,7 +42,7 @@ A SwiftUI iOS app for real-time camera event monitoring using the [EENApiToolkit
 1. Build and run:
    ```bash
    xcodebuild -project ObservationCompanion.xcodeproj -scheme ObservationCompanion \
-       -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build
+       -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
    ```
 
 2. Use "Paste URL" to enter a deep link, or tap "Sign In with Eagle Eye Networks" for OAuth.
@@ -57,7 +60,8 @@ ObservationCompanion/
 ├── Version.swift                  # Auto-generated toolkit version
 ├── Models/
 │   ├── AppState.swift             # Connection state, HLS player, SSE, token countdown
-│   └── CameraEvent.swift          # Event model, bounding box extraction, 56 event type icons
+│   ├── CameraEvent.swift          # Event model, bounding box/confidence/reason extraction, 56 event type icons
+│   └── EventDataSchemas.swift     # Event type → data schema mapping for dynamic include parameters
 ├── Utils/
 │   ├── EventTypeHash.swift        # 3-char hash codes for event types
 │   └── SoundPlayer.swift          # Audio alert on new events
@@ -85,6 +89,23 @@ ObservationCompanion/
 | Recorded image | `GET /media/recordedImage` | `toolkit.media.getRecordedImage(deviceId:params:)` |
 | Recorded video | `GET /media` | `toolkit.media.listMedia(params:)` with `include: ["hlsUrl"]` |
 
+### Event Data Include Parameters
+
+When fetching event history, the app dynamically builds the `include` parameter based on the
+camera's supported event types. `EventDataSchemas.includeParameters(for:)` maps each event
+type to its data schemas (e.g., `een.personDetectionEvent.v1` → `data.een.objectDetection.v1`,
+`data.een.objectClassification.v1`, etc.) and returns the deduplicated union.
+
+Key data schemas used by the app:
+
+| Schema | Extracted Field | Used For |
+|--------|----------------|----------|
+| `een.objectDetection.v1` | `boundingBox` | Bounding box overlays on images/video |
+| `een.objectClassification.v1` | `confidence` | Detection confidence percentages |
+| `een.eevaAttributes.v1` | `reason` | EEVA AI reasoning text |
+
+SSE subscriptions do not support `include` — data schemas in SSE events are server-determined.
+
 ## Tests
 
 ### Unit Tests (58 tests)
@@ -94,7 +115,7 @@ Cover EventTypeHash, CameraEvent, AppState URL parsing, state management, and to
 ```bash
 xcodebuild test -project ObservationCompanion.xcodeproj \
   -scheme ObservationCompanion \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   -only-testing:ObservationCompanionTests
 ```
 
