@@ -194,34 +194,34 @@ struct EventTypeHashTests {
 @Suite("CameraEvent")
 struct CameraEventTests {
 
-    @Test("typeEmoji returns runner for motion")
+    @Test("typeEmoji returns eye for motion detection")
     func emojiMotion() {
         let event = CameraEvent(type: "een.motionDetectionEvent.v1", actorId: "cam1", description: "test")
-        #expect(event.typeEmoji == "🏃")
+        #expect(event.typeEmoji == "👁️")
     }
 
-    @Test("typeEmoji returns green circle for online")
-    func emojiOnline() {
-        let event = CameraEvent(type: "cameraOnline", actorId: "cam1", description: "test")
-        #expect(event.typeEmoji == "🟢")
+    @Test("typeEmoji returns person for person detection")
+    func emojiPerson() {
+        let event = CameraEvent(type: "een.personDetectionEvent.v1", actorId: "cam1", description: "test")
+        #expect(event.typeEmoji == "🧑")
     }
 
-    @Test("typeEmoji returns red circle for offline")
-    func emojiOffline() {
-        let event = CameraEvent(type: "deviceOffline", actorId: "cam1", description: "test")
-        #expect(event.typeEmoji == "🔴")
+    @Test("typeEmoji returns car for vehicle detection")
+    func emojiVehicle() {
+        let event = CameraEvent(type: "een.vehicleDetectionEvent.v1", actorId: "cam1", description: "test")
+        #expect(event.typeEmoji == "🚗")
     }
 
-    @Test("typeEmoji returns warning for tamper")
+    @Test("typeEmoji returns warning for tamper detection")
     func emojiTamper() {
-        let event = CameraEvent(type: "tamperDetection", actorId: "cam1", description: "test")
+        let event = CameraEvent(type: "een.tamperDetectionEvent.v1", actorId: "cam1", description: "test")
         #expect(event.typeEmoji == "⚠️")
     }
 
-    @Test("typeEmoji returns record for recording")
-    func emojiRecording() {
-        let event = CameraEvent(type: "recordingOn", actorId: "cam1", description: "test")
-        #expect(event.typeEmoji == "⏺️")
+    @Test("typeEmoji returns robot for EEVA query")
+    func emojiEeva() {
+        let event = CameraEvent(type: "een.eevaQueryEvent.v1", actorId: "cam1", description: "test")
+        #expect(event.typeEmoji == "🤖")
     }
 
     @Test("typeEmoji returns clipboard for unknown type")
@@ -230,10 +230,10 @@ struct CameraEventTests {
         #expect(event.typeEmoji == "📋")
     }
 
-    @Test("typeEmoji is case insensitive")
-    func emojiCaseInsensitive() {
+    @Test("typeEmoji returns clipboard for non-EEN event type")
+    func emojiNonEenType() {
         let event = CameraEvent(type: "MOTION_DETECTED", actorId: "cam1", description: "test")
-        #expect(event.typeEmoji == "🏃")
+        #expect(event.typeEmoji == "📋")
     }
 
     @Test("default timestamp is close to now")
@@ -249,6 +249,36 @@ struct CameraEventTests {
     func defaultEventId() {
         let event = CameraEvent(type: "test", actorId: "cam1", description: "test")
         #expect(event.eventId == nil)
+    }
+
+    @Test("confidenceText shows single value as percentage")
+    func confidenceSingle() {
+        let event = CameraEvent(type: "test", actorId: "cam1", description: "test", confidences: [0.926])
+        #expect(event.confidenceText == "92.6% confidence")
+    }
+
+    @Test("confidenceText shows range for multiple values")
+    func confidenceRange() {
+        let event = CameraEvent(type: "test", actorId: "cam1", description: "test", confidences: [0.926, 0.784, 0.902])
+        #expect(event.confidenceText == "78.4% to 92.6% confidence")
+    }
+
+    @Test("confidenceText is nil when no confidences")
+    func confidenceEmpty() {
+        let event = CameraEvent(type: "test", actorId: "cam1", description: "test")
+        #expect(event.confidenceText == nil)
+    }
+
+    @Test("eevaReason is stored and accessible")
+    func eevaReason() {
+        let event = CameraEvent(type: "een.eevaQueryEvent.v1", actorId: "cam1", description: "test", eevaReason: "a person wearing black pants")
+        #expect(event.eevaReason == "a person wearing black pants")
+    }
+
+    @Test("eevaReason defaults to nil")
+    func eevaReasonDefault() {
+        let event = CameraEvent(type: "test", actorId: "cam1", description: "test")
+        #expect(event.eevaReason == nil)
     }
 }
 
