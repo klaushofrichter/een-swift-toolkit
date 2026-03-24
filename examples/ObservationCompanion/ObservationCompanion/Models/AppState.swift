@@ -2,6 +2,9 @@ import Foundation
 import AVFoundation
 import Combine
 import EENApiToolkit
+#if canImport(ActivityKit)
+import ActivityKit
+#endif
 
 enum AppError: LocalizedError {
     case noHLSUrl
@@ -74,6 +77,10 @@ class AppState: ObservableObject {
     private var eventHashes: String = ""
 
     let toolkit: EENToolkit
+
+    #if canImport(ActivityKit)
+    private let liveActivityManager = LiveActivityManager()
+    #endif
 
     private var tokenTimer: Timer?
     private var latencyTimer: Timer?
@@ -408,6 +415,12 @@ class AppState: ObservableObject {
                                     actorId: self?.cameraId ?? "",
                                     description: "Connected to event stream"
                                 ), at: 0)
+                                #if canImport(ActivityKit)
+                                self?.liveActivityManager.startMonitoring(
+                                    cameraName: self?.cameraName ?? "Camera",
+                                    cameraId: self?.cameraId ?? ""
+                                )
+                                #endif
                             }
                         }
                     }
@@ -442,6 +455,17 @@ class AppState: ObservableObject {
             confidences: confidences
         )
         insertEvent(event)
+
+        if !event.type.hasPrefix("sse_") {
+            #if canImport(ActivityKit)
+            let realEventCount = events.filter { !$0.type.hasPrefix("sse_") }.count
+            liveActivityManager.updateWithEvent(
+                emoji: event.typeEmoji,
+                description: event.description,
+                eventCount: realEventCount
+            )
+            #endif
+        }
 
         if !boxes.isEmpty {
             scheduleOverlay(boxes: boxes)
@@ -502,6 +526,9 @@ class AppState: ObservableObject {
     func switchCamera(to newCameraId: String) {
         guard newCameraId != cameraId else { return }
 
+        #if canImport(ActivityKit)
+        liveActivityManager.endMonitoring()
+        #endif
         sseConnection?.close()
         sseConnection = nil
         hlsPlayer?.pause()
@@ -623,6 +650,9 @@ class AppState: ObservableObject {
     }
 
     private func cleanup() {
+        #if canImport(ActivityKit)
+        liveActivityManager.endMonitoring()
+        #endif
         tokenTimer?.invalidate()
         tokenTimer = nil
         latencyTimer?.invalidate()

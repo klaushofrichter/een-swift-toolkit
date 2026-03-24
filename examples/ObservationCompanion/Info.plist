@@ -15,5 +15,7 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera access is needed to scan QR codes for connecting to Eagle Eye Networks cameras.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 </dict>
 </plist>

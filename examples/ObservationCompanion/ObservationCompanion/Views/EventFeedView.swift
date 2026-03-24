@@ -156,6 +156,8 @@ struct EventFeedView: View {
                 currentDuration: appState.historyDuration,
                 currentShowSSEEvents: appState.showSSEEvents
             ) { newTypes, duration, showSSE in
+                selectedEvent = nil
+                lastSelectedEventId = nil
                 appState.showSSEEvents = showSSE
                 appState.applyEventFilter(newTypes, duration: duration)
             }
@@ -393,6 +395,7 @@ private struct EventDetailInline: View {
     @State private var wasPlayingBeforeScrub = false
     @State private var videoStartDate: Date?
     @State private var seekedToEvent = false
+    @State private var showCopiedToast = false
 
     private static let fullFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -542,7 +545,22 @@ private struct EventDetailInline: View {
                         }
                         DetailRow(label: "Actor", value: cameraName)
                         if let eventId = event.eventId {
-                            DetailRow(label: "Event ID", value: eventId)
+                            Button {
+                                UIPasteboard.general.string = eventId
+                                withAnimation { showCopiedToast = true }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                    withAnimation { showCopiedToast = false }
+                                }
+                            } label: {
+                                HStack(alignment: .top) {
+                                    DetailRow(label: "Event ID", value: eventId)
+                                    Spacer()
+                                    Image(systemName: showCopiedToast ? "checkmark.circle.fill" : "doc.on.doc")
+                                        .font(.caption)
+                                        .foregroundColor(showCopiedToast ? .green : .gray)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
                         }
                     }
                 }

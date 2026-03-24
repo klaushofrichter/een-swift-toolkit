@@ -19,6 +19,8 @@ A SwiftUI iOS app for real-time camera event monitoring using the [EENApiToolkit
 - **Event data enrichment** — dynamic `include` parameters per camera based on event type to data schema mapping
 - **EEVA AI reasoning** — shows the AI-generated reason for EEVA query events (`een.eevaQueryEvent.v1`)
 - **Detection confidence** — displays object classification confidence percentages from `een.objectClassification.v1`
+- **Dynamic Island** — Live Activity shows latest event icon and elapsed time in the compact view; expanded view shows camera name, event description, count, and monitoring status
+- **Tap to copy Event ID** — tap the Event ID in the detail view to copy it to the clipboard with visual confirmation
 - **Event type filtering** — toggle event types, shows hashed short codes
 - **Camera switching** — switch between cameras on the same account
 - **Landscape mode** — 50/50 split between live video and event feed
@@ -64,6 +66,7 @@ ObservationCompanion/
 │   └── EventDataSchemas.swift     # Event type → data schema mapping for dynamic include parameters
 ├── Utils/
 │   ├── EventTypeHash.swift        # 3-char hash codes for event types
+│   ├── LiveActivityManager.swift  # ActivityKit Live Activity lifecycle (Dynamic Island)
 │   └── SoundPlayer.swift          # Audio alert on new events
 └── Views/
     ├── MainContentView.swift      # State-based navigation (scanner/connecting/live/expired/error)
@@ -72,6 +75,11 @@ ObservationCompanion/
     ├── LiveVideoView.swift        # HLS video player with LIVE HD badge
     ├── EventFeedView.swift        # Event list, detail view, recorded video, navigation
     └── TokenCountdownView.swift   # Token TTL progress bar
+Shared/
+├── WatchEvent.swift               # Codable event model for Watch connectivity
+└── MonitoringActivityAttributes.swift  # ActivityKit attributes for Dynamic Island
+ObservationCompanionWidgets/
+└── MonitoringActivityWidget.swift  # Dynamic Island + Lock Screen Live Activity UI
 ```
 
 ## EEN API Usage
