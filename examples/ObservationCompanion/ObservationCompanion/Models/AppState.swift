@@ -65,6 +65,7 @@ class AppState: ObservableObject {
     @Published var historyDuration: TimeInterval = 86400
     @Published var isMuted: Bool = true
     @Published var showSSEEvents: Bool = false
+    @Published var deepLinkEventId: String?
     @Published var liveBoundingBoxes: [BoundingBox] = []
     @Published var hlsLatency: TimeInterval = 5.0
 
@@ -384,6 +385,11 @@ class AppState: ObservableObject {
                 return
             }
 
+            // Start Live Activity before loading history
+            #if canImport(ActivityKit)
+            liveActivityManager.startMonitoring(cameraName: cameraName)
+            #endif
+
             // Load history first
             await loadHistory()
 
@@ -416,10 +422,7 @@ class AppState: ObservableObject {
                                     description: "Connected to event stream"
                                 ), at: 0)
                                 #if canImport(ActivityKit)
-                                self?.liveActivityManager.startMonitoring(
-                                    cameraName: self?.cameraName ?? "Camera",
-                                    cameraId: self?.cameraId ?? ""
-                                )
+                                self?.updateLiveActivity()
                                 #endif
                             }
                         }
@@ -458,12 +461,7 @@ class AppState: ObservableObject {
 
         if !event.type.hasPrefix("sse_") {
             #if canImport(ActivityKit)
-            let realEventCount = events.filter { !$0.type.hasPrefix("sse_") }.count
-            liveActivityManager.updateWithEvent(
-                emoji: event.typeEmoji,
-                description: event.description,
-                eventCount: realEventCount
-            )
+            updateLiveActivity()
             #endif
         }
 
@@ -507,6 +505,9 @@ class AppState: ObservableObject {
                 )
             }
             mergeEvents(historyEvents)
+            #if canImport(ActivityKit)
+            updateLiveActivity()
+            #endif
         } catch {
             self.events.insert(CameraEvent(
                 type: "sse_error",
@@ -602,6 +603,30 @@ class AppState: ObservableObject {
     }
 
     // MARK: - Helpers
+
+    #if canImport(ActivityKit)
+    /// Updates the Dynamic Island to reflect the most recent real event in the list.
+    private func updateLiveActivity() {
+        let realEvents = events.filter { !$0.type.hasPrefix("sse_") }
+        if let latest = realEvents.first {
+            liveActivityManager.updateWithEvent(
+                cameraName: cameraName,
+                emoji: latest.typeEmoji,
+                description: latest.description,
+                eventCount: realEvents.count,
+                timestamp: latest.timestamp,
+                eventId: latest.eventId
+            )
+        } else {
+            liveActivityManager.updateWithEvent(
+                cameraName: cameraName,
+                emoji: "",
+                description: "No events",
+                eventCount: 0
+            )
+        }
+    }
+    #endif
 
     private func insertEvent(_ event: CameraEvent) {
         if let eventId = event.eventId,

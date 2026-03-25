@@ -6,7 +6,7 @@ import Foundation
 class LiveActivityManager {
     private var currentActivity: Activity<MonitoringActivityAttributes>?
 
-    func startMonitoring(cameraName: String, cameraId: String) {
+    func startMonitoring(cameraName: String) {
         endMonitoring()
 
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
@@ -14,15 +14,14 @@ class LiveActivityManager {
             return
         }
 
-        let attributes = MonitoringActivityAttributes(
-            cameraName: cameraName,
-            cameraId: cameraId
-        )
+        let attributes = MonitoringActivityAttributes()
         let initialState = MonitoringActivityAttributes.ContentState(
+            cameraName: cameraName,
             latestEventEmoji: "📡",
             latestEventDescription: "Connecting to event stream...",
             eventCount: 0,
-            lastEventTimestamp: Date()
+            lastEventTimestamp: nil,
+            latestEventId: nil
         )
 
         do {
@@ -38,14 +37,16 @@ class LiveActivityManager {
         }
     }
 
-    func updateWithEvent(emoji: String, description: String, eventCount: Int) {
+    func updateWithEvent(cameraName: String, emoji: String, description: String, eventCount: Int, timestamp: Date? = nil, eventId: String? = nil) {
         guard let activity = currentActivity else { return }
 
         let updatedState = MonitoringActivityAttributes.ContentState(
+            cameraName: cameraName,
             latestEventEmoji: emoji,
             latestEventDescription: description,
             eventCount: eventCount,
-            lastEventTimestamp: Date()
+            lastEventTimestamp: timestamp,
+            latestEventId: eventId
         )
 
         Task {
@@ -57,15 +58,17 @@ class LiveActivityManager {
         guard let activity = currentActivity else { return }
 
         let finalState = MonitoringActivityAttributes.ContentState(
+            cameraName: "",
             latestEventEmoji: "⏹️",
             latestEventDescription: "Monitoring ended",
             eventCount: 0,
-            lastEventTimestamp: Date()
+            lastEventTimestamp: nil,
+            latestEventId: nil
         )
 
         Task {
             await activity.end(.init(state: finalState, staleDate: nil),
-                              dismissalPolicy: .default)
+                              dismissalPolicy: .immediate)
         }
         currentActivity = nil
     }

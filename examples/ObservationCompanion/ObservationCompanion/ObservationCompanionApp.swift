@@ -50,6 +50,10 @@ struct ObservationCompanionApp: App {
                     }
                 }
             }
+        } else if host == "event" {
+            // Dynamic Island deep link to event detail
+            let eventId = url.pathComponents.dropFirst().first
+            appState.deepLinkEventId = eventId
         } else {
             // QR code / deep link
             appState.handleViewerURL(url)

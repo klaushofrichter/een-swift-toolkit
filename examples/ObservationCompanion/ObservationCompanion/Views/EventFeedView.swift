@@ -162,6 +162,14 @@ struct EventFeedView: View {
                 appState.applyEventFilter(newTypes, duration: duration)
             }
         }
+        .onChange(of: appState.deepLinkEventId) { _, eventId in
+            guard let eventId else { return }
+            appState.deepLinkEventId = nil
+            if let event = displayedEvents.first(where: { $0.eventId == eventId }) {
+                selectedEvent = event
+                lastSelectedEventId = event.id
+            }
+        }
     }
 }
 

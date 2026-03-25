@@ -13,10 +13,18 @@ struct MonitoringActivityWidget: Widget {
         ActivityConfiguration(for: MonitoringActivityAttributes.self) { context in
             // Lock Screen / banner presentation
             HStack(spacing: 12) {
-                Text(context.state.latestEventEmoji)
-                    .font(.largeTitle)
+                if context.state.latestEventEmoji.isEmpty {
+                    Image("AppIconImage")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 40, height: 40)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    Text(context.state.latestEventEmoji)
+                        .font(.largeTitle)
+                }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(context.attributes.cameraName)
+                    Text(context.state.cameraName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text(context.state.latestEventDescription)
@@ -35,11 +43,20 @@ struct MonitoringActivityWidget: Widget {
                 }
             }
             .padding()
+            .widgetURL(Self.eventURL(context.state.latestEventId))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Text(context.state.latestEventEmoji)
-                        .font(.title)
+                    if context.state.latestEventEmoji.isEmpty {
+                        Image("AppIconImage")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 28, height: 28)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    } else {
+                        Text(context.state.latestEventEmoji)
+                            .font(.title)
+                    }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text("\(context.state.eventCount)")
@@ -49,7 +66,7 @@ struct MonitoringActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.center) {
                     VStack(spacing: 2) {
-                        Text(context.attributes.cameraName)
+                        Text(context.state.cameraName)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -68,26 +85,52 @@ struct MonitoringActivityWidget: Widget {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Text(context.state.lastEventTimestamp, style: .relative)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                        if let timestamp = context.state.lastEventTimestamp {
+                            Text(timestamp, style: .relative)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             } compactLeading: {
-                Text(context.state.latestEventEmoji)
-                    .font(.body)
-                    .minimumScaleFactor(0.5)
+                if context.state.latestEventEmoji.isEmpty {
+                    Image("AppIconImage")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                } else {
+                    Text(context.state.latestEventEmoji)
+                        .font(.body)
+                        .minimumScaleFactor(0.5)
+                }
             } compactTrailing: {
-                Text(context.state.lastEventTimestamp, style: .timer)
-                    .font(.caption2)
-                    .monospacedDigit()
-                    .foregroundStyle(.cyan)
-                    .frame(maxWidth: 42)
+                if let timestamp = context.state.lastEventTimestamp {
+                    Text(timestamp, style: .timer)
+                        .font(.caption2)
+                        .monospacedDigit()
+                        .foregroundStyle(.cyan)
+                        .frame(maxWidth: 42)
+                }
             } minimal: {
-                Text(context.state.latestEventEmoji)
-                    .font(.caption)
-                    .minimumScaleFactor(0.5)
+                if context.state.latestEventEmoji.isEmpty {
+                    Image("AppIconImage")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 16, height: 16)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                } else {
+                    Text(context.state.latestEventEmoji)
+                        .font(.caption)
+                        .minimumScaleFactor(0.5)
+                }
             }
+            .widgetURL(Self.eventURL(context.state.latestEventId))
         }
+    }
+
+    private static func eventURL(_ eventId: String?) -> URL? {
+        guard let eventId else { return nil }
+        return URL(string: "eenobserve://event/\(eventId)")
     }
 }
