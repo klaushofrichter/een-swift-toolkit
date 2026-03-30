@@ -96,6 +96,14 @@ echo -e "${BLUE}============================================${NC}"
 echo "Proxy: $PROXY_URL"
 echo ""
 
+# ── Ensure local proxy is running ───────────────────────────────────────
+if [ "${SKIP_INTEGRATION:-}" != "1" ]; then
+    echo -e "${BLUE}[0] Ensuring local proxy is running${NC}"
+    echo "────────────────────────────────────────────"
+    "$SCRIPT_DIR/ensure-proxy.sh"
+    echo ""
+fi
+
 # ══════════════════════════════════════════════════════════════════════════
 # 1. Toolkit unit tests
 # ══════════════════════════════════════════════════════════════════════════
@@ -119,9 +127,6 @@ if [ "${SKIP_INTEGRATION:-}" = "1" ]; then
 else
     echo -e "${BLUE}[2] Toolkit integration tests${NC}"
     echo "────────────────────────────────────────────"
-
-    # Ensure proxy
-    "$SCRIPT_DIR/ensure-proxy.sh"
 
     # Install Node deps if needed
     cd "$PROJECT_DIR"
