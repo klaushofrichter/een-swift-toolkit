@@ -5,8 +5,10 @@ import Foundation
 @MainActor
 class LiveActivityManager {
     private var currentActivity: Activity<MonitoringActivityAttributes>?
+    private(set) var isDismissed = false
 
     func startMonitoring(cameraName: String) {
+        isDismissed = false
         endMonitoring()
 
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
@@ -39,6 +41,7 @@ class LiveActivityManager {
 
     func updateWithEvent(cameraName: String, emoji: String, description: String, eventCount: Int, timestamp: Date? = nil, eventId: String? = nil) {
         guard let activity = currentActivity else { return }
+        guard !isDismissed else { return }
 
         let updatedState = MonitoringActivityAttributes.ContentState(
             cameraName: cameraName,
@@ -52,6 +55,33 @@ class LiveActivityManager {
         Task {
             await activity.update(.init(state: updatedState, staleDate: nil))
         }
+    }
+
+    func dismiss() {
+        guard let activity = currentActivity else { return }
+        isDismissed = true
+
+        let finalState = MonitoringActivityAttributes.ContentState(
+            cameraName: "",
+            latestEventEmoji: "",
+            latestEventDescription: "",
+            eventCount: 0,
+            lastEventTimestamp: nil,
+            latestEventId: nil
+        )
+
+        Task {
+            await activity.end(.init(state: finalState, staleDate: nil),
+                              dismissalPolicy: .immediate)
+        }
+        currentActivity = nil
+        print("[LiveActivity] Dismissed via user action")
+    }
+
+    func undismiss(cameraName: String) {
+        guard isDismissed else { return }
+        isDismissed = false
+        startMonitoring(cameraName: cameraName)
     }
 
     func endMonitoring() {

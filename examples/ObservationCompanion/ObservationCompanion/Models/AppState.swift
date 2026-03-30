@@ -461,6 +461,7 @@ class AppState: ObservableObject {
 
         if !event.type.hasPrefix("sse_") {
             #if canImport(ActivityKit)
+            liveActivityManager.undismiss(cameraName: cameraName)
             updateLiveActivity()
             #endif
         }
@@ -625,6 +626,10 @@ class AppState: ObservableObject {
                 eventCount: 0
             )
         }
+    }
+
+    func dismissLiveActivity() {
+        liveActivityManager.dismiss()
     }
     #endif
 

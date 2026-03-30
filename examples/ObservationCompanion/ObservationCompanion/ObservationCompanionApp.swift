@@ -50,6 +50,10 @@ struct ObservationCompanionApp: App {
                     }
                 }
             }
+        } else if host == "dismiss" {
+            #if canImport(ActivityKit)
+            appState.dismissLiveActivity()
+            #endif
         } else if host == "event" {
             // Dynamic Island deep link to event detail
             let eventId = url.pathComponents.dropFirst().first
