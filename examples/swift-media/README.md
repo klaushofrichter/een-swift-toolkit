@@ -2,6 +2,8 @@
 
 A SwiftUI iOS app demonstrating live and recorded media features of the [EENApiToolkit](../../README.md) — the native Swift SDK for Eagle Eye Networks REST API v3.0.
 
+![Live View](docs/screenshot-live.png)
+
 ## Features
 
 - **OAuth Login** — Sign in via the EEN OAuth proxy, with app icon on login page
