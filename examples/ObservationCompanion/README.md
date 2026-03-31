@@ -1,6 +1,6 @@
 # Observation Companion
 
-A SwiftUI iOS app for real-time camera event monitoring using the [EENApiToolkit](../../README.md) — the native Swift SDK for Eagle Eye Networks REST API v3.0.
+A SwiftUI iOS app for real-time camera event monitoring using the [EENSwiftToolkit](../../README.md) — the native Swift SDK for Eagle Eye Networks REST API v3.0.
 
 ![Live View](docs/screenshot-live.png)
 

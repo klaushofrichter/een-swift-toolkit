@@ -1,5 +1,5 @@
 import Testing
-@testable import EENApiToolkit
+@testable import EENSwiftToolkit
 
 @Suite("InMemoryTokenStorage Tests")
 struct TokenStorageTests {

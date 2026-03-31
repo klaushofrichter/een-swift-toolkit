@@ -18,7 +18,7 @@
 		AA00000000000000000009 /* RecordedImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000009 /* RecordedImageView.swift */; };
 		AA00000000000000000010 /* RecordedVideoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000010 /* RecordedVideoView.swift */; };
 		AA00000000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000011 /* Assets.xcassets */; };
-		AA00000000000000000012 /* EENApiToolkit in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000002 /* EENApiToolkit */; };
+		AA00000000000000000012 /* EENSwiftToolkit in Frameworks */ = {isa = PBXBuildFile; productRef = AE00000000000000000002 /* EENSwiftToolkit */; };
 		AA00000000000000000013 /* Utilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000013 /* Utilities.swift */; };
 		AA00000000000000000014 /* Version.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000014 /* Version.swift */; };
 		AA00000000000000000101 /* SwiftMediaUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB00000000000000000101 /* SwiftMediaUITests.swift */; };
@@ -68,7 +68,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA00000000000000000012 /* EENApiToolkit in Frameworks */,
+				AA00000000000000000012 /* EENSwiftToolkit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -162,7 +162,7 @@
 			);
 			name = SwiftMedia;
 			packageProductDependencies = (
-				AE00000000000000000002 /* EENApiToolkit */,
+				AE00000000000000000002 /* EENSwiftToolkit */,
 			);
 			productName = SwiftMedia;
 			productReference = AB00000000000000000012 /* SwiftMedia.app */;
@@ -619,9 +619,9 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		AE00000000000000000002 /* EENApiToolkit */ = {
+		AE00000000000000000002 /* EENSwiftToolkit */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = EENApiToolkit;
+			productName = EENSwiftToolkit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

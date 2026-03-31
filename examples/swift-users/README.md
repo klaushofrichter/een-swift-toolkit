@@ -1,6 +1,6 @@
 # SwiftUsers
 
-A SwiftUI iOS app demonstrating user management features of the [EENApiToolkit](../../README.md) — the native Swift SDK for Eagle Eye Networks REST API v3.0.
+A SwiftUI iOS app demonstrating user management features of the [EENSwiftToolkit](../../README.md) — the native Swift SDK for Eagle Eye Networks REST API v3.0.
 
 ![User Profile](docs/screenshot-profile.png)
 

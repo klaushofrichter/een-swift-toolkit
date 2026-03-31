@@ -1,6 +1,6 @@
 import SwiftUI
 import AVFoundation
-import EENApiToolkit
+import EENSwiftToolkit
 
 struct RecordedVideoView: View {
     let toolkit: EENToolkit

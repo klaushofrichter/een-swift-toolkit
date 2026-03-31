@@ -29,7 +29,7 @@ final class SwiftMediaUITests: XCTestCase {
             .deletingLastPathComponent() // swift-media/
         let toolkitDir = projectDir
             .deletingLastPathComponent() // examples/
-            .deletingLastPathComponent() // EENApiToolkit/
+            .deletingLastPathComponent() // EENSwiftToolkit/
 
         let candidatePaths = [
             projectDir.appendingPathComponent("ui-test-credentials.json"),

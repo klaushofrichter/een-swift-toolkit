@@ -1,6 +1,6 @@
 # API Reference
 
-EENApiToolkit provides 16 service properties on the central `EENToolkit` class. All methods use `async throws`.
+EENSwiftToolkit provides 16 service properties on the central `EENToolkit` class. All methods use `async throws`.
 
 ## Services Overview
 

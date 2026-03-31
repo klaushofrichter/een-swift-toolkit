@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import EENApiToolkit
+@testable import EENSwiftToolkit
 
 @Suite("PaginatedResult Tests")
 struct PaginatedResultTests {

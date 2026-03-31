@@ -72,3 +72,10 @@ jobs:
             --title "v${{ steps.version.outputs.version }}" \
             --notes-file /tmp/release-notes.md \
             --target production
+
+      - name: Sync production back to develop
+        run: |
+          git fetch origin develop
+          git checkout develop
+          git merge origin/production --no-edit
+          git push origin develop

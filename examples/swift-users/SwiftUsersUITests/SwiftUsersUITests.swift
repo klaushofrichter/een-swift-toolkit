@@ -34,7 +34,7 @@ final class SwiftUsersUITests: XCTestCase {
             .deletingLastPathComponent() // swift-users/
         let toolkitDir = projectDir
             .deletingLastPathComponent() // examples/
-            .deletingLastPathComponent() // EENApiToolkit/
+            .deletingLastPathComponent() // EENSwiftToolkit/
 
         let candidatePaths = [
             projectDir.appendingPathComponent("ui-test-credentials.json"),

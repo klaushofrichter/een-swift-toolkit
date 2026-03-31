@@ -1,5 +1,5 @@
 import SwiftUI
-import EENApiToolkit
+import EENSwiftToolkit
 
 struct RecordedImageView: View {
     let toolkit: EENToolkit

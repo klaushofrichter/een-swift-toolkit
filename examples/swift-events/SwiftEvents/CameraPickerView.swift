@@ -1,5 +1,5 @@
 import SwiftUI
-import EENApiToolkit
+import EENSwiftToolkit
 
 struct CameraPickerView: View {
     let toolkit: EENToolkit

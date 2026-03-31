@@ -8,9 +8,36 @@ A native Swift SDK for the [Eagle Eye Networks](https://www.een.com) REST API v3
 - Swift 5.9+
 - No external dependencies
 
+## OAuth Proxy
+
+This SDK authenticates via an OAuth proxy that holds client secrets server-side, keeping them out of the mobile app. The proxy handles token exchange, refresh, and revocation.
+
+The companion project [een-mobile-proxy](https://github.com/klaushofrichter/een-mobile-proxy) provides a Cloudflare Worker that serves as this proxy. You can run it locally for development or deploy it to Cloudflare Workers for production use:
+
+```bash
+# Local development
+cd een-mobile-proxy/proxy && npm run dev    # runs on http://127.0.0.1:3333
+
+# Production (Cloudflare Workers)
+# https://een-mobile-proxy.klaushofrichter.workers.dev
+```
+
+The `proxyUrl` in `EENToolkitConfig` points to whichever proxy instance you're using.
+
 ## Installation
 
-Add the package via Swift Package Manager:
+### Xcode
+
+1. Open your project in Xcode
+2. Go to **File > Add Package Dependencies...**
+3. Enter the repository URL: `https://github.com/klaushofrichter/een-swift-toolkit.git`
+4. Select **Up to Next Major Version** and enter `0.1.0`
+5. Click **Add Package**
+6. Select `EENSwiftToolkit` and add it to your target
+
+### Package.swift
+
+Add the dependency to your `Package.swift`:
 
 ```swift
 dependencies: [
@@ -18,12 +45,31 @@ dependencies: [
 ]
 ```
 
-Then add `EENApiToolkit` to your target's dependencies.
+Then add `EENSwiftToolkit` to your target:
+
+```swift
+targets: [
+    .target(
+        name: "YourApp",
+        dependencies: [
+            .product(name: "EENSwiftToolkit", package: "een-swift-toolkit")
+        ]
+    )
+]
+```
+
+### Import
+
+```swift
+import EENSwiftToolkit
+```
+
+The SDK has no external dependencies — it uses only Foundation and URLSession.
 
 ## Quick Start
 
 ```swift
-import EENApiToolkit
+import EENSwiftToolkit
 
 let config = EENToolkitConfig(
     proxyUrl: "http://127.0.0.1:3333",
@@ -349,15 +395,15 @@ Detailed guides are available in `docs/`:
 ## File Structure
 
 ```
-Sources/EENApiToolkit/
-  EENApiToolkit.swift          # Main entry point
+Sources/EENSwiftToolkit/
+  EENSwiftToolkit.swift          # Main entry point
   Auth/                        # OAuth, tokens, storage
   Configuration/               # EENToolkitConfig
   Core/                        # HTTPClient, errors, pagination, query encoding, timestamps
   Models/                      # 16 data model files
   Services/                    # 16 API service files
   SSE/                         # Server-Sent Events streaming
-Tests/EENApiToolkitTests/
+Tests/EENSwiftToolkitTests/
   Core/                        # Unit tests for core utilities
   Services/                    # Model decoding tests
   Integration/                 # Live API tests (require credentials)
