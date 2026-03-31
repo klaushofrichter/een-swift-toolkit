@@ -183,10 +183,9 @@ xcodebuild test -project examples/ObservationCompanion/ObservationCompanion.xcod
 ### GitHub Actions Workflow
 
 The [Tests workflow](.github/workflows/tests.yml) runs automatically on:
-- **Push to `develop`** — fast feedback on every commit
 - **PR to `production`** — required checks must pass before merge
 
-**Automatic jobs (every push/PR):**
+**Automatic jobs (every PR):**
 
 | Job | What it does | Runner |
 |-----|-------------|--------|
@@ -206,6 +205,23 @@ The [Tests workflow](.github/workflows/tests.yml) runs automatically on:
 - Required status checks must pass: unit tests + all example builds
 - Enforced for admins
 - No force pushes or deletions
+
+### Releases
+
+When a PR is merged to `production`, the [Release workflow](.github/workflows/release.yml) automatically:
+1. Reads the version from `package.json` (e.g., `0.1.21`)
+2. Generates release notes from commit messages since the last tag
+3. Creates a git tag (`v0.1.21`) and a GitHub Release
+
+Third-party Swift projects consume the SDK via SPM using the tagged version:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/klaushofrichter/een-swift-toolkit.git", from: "0.1.0")
+]
+```
+
+To bump the version before releasing, update the `version` field in `package.json` on `develop` before creating the PR to `production`.
 
 ## Testing
 

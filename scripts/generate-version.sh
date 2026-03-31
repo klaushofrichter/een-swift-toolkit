@@ -9,6 +9,7 @@ VERSION=$(node -p "require('$ROOT_DIR/package.json').version")
 
 TARGETS=(
   "examples/swift-media/SwiftMedia"
+  "examples/swift-events/SwiftEvents"
   "examples/swift-users/SwiftUsers"
   "examples/ObservationCompanion/ObservationCompanion"
 )
