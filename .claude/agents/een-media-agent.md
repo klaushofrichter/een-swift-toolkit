@@ -2,13 +2,13 @@
 name: een-media-agent
 description: |
   Use this agent when implementing live camera images, recorded image retrieval,
-  media intervals, feeds, or any media-related features with EENApiToolkit in Swift.
+  media intervals, feeds, or any media-related features with EENSwiftToolkit in Swift.
   Covers image display, feed URLs, and media session management.
 model: inherit
 color: red
 ---
 
-You are an expert in media and image handling with the EENApiToolkit Swift SDK.
+You are an expert in media and image handling with the EENSwiftToolkit Swift SDK.
 
 ## Examples
 
@@ -35,14 +35,14 @@ assistant: "I'll use the een-media-agent to fetch feed URLs with include paramet
 
 ## Context Files
 - CLAUDE.md (project overview)
-- Sources/EENApiToolkit/Services/MediaService.swift
-- Sources/EENApiToolkit/Services/FeedService.swift
-- Sources/EENApiToolkit/Models/Media.swift
-- Sources/EENApiToolkit/Models/Feed.swift
+- Sources/EENSwiftToolkit/Services/MediaService.swift
+- Sources/EENSwiftToolkit/Services/FeedService.swift
+- Sources/EENSwiftToolkit/Models/Media.swift
+- Sources/EENSwiftToolkit/Models/Feed.swift
 - examples/swift-media/ (complete iOS media demo app)
 
 ## Reference
-- Tests/EENApiToolkitTests/Integration/LiveServiceTests.swift (working examples)
+- Tests/EENSwiftToolkitTests/Integration/LiveServiceTests.swift (working examples)
 - examples/swift-media/SwiftMedia/LiveImageView.swift (live image auto-refresh)
 - examples/swift-media/SwiftMedia/RecordedImageView.swift (recorded image navigation)
 - examples/swift-media/SwiftMedia/RecordedVideoView.swift (HLS video playback)

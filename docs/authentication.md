@@ -1,6 +1,6 @@
 # Authentication Guide
 
-EENApiToolkit uses an OAuth proxy that handles refresh tokens server-side. Your app never sees the refresh token — it receives an access token and a session ID.
+EENSwiftToolkit uses an OAuth proxy that handles refresh tokens server-side. Your app never sees the refresh token — it receives an access token and a session ID.
 
 ## Architecture
 

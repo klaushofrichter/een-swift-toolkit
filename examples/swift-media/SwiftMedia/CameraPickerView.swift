@@ -1,5 +1,5 @@
 import SwiftUI
-import EENApiToolkit
+import EENSwiftToolkit
 
 /// Shared camera selection bar displayed at the top of media tabs.
 struct CameraPickerView: View {

@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import EENApiToolkit
+@testable import EENSwiftToolkit
 
 /// Integration tests that run against a live EEN mobile proxy and real EEN account.
 ///

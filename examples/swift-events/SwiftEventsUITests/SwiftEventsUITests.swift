@@ -29,7 +29,7 @@ final class SwiftEventsUITests: XCTestCase {
             .deletingLastPathComponent() // swift-events/
         let toolkitDir = projectDir
             .deletingLastPathComponent() // examples/
-            .deletingLastPathComponent() // EENApiToolkit/
+            .deletingLastPathComponent() // EENSwiftToolkit/
 
         let candidatePaths = [
             projectDir.appendingPathComponent("ui-test-credentials.json"),

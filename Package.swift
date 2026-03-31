@@ -2,19 +2,19 @@
 import PackageDescription
 
 let package = Package(
-    name: "EENApiToolkit",
+    name: "EENSwiftToolkit",
     platforms: [
         .iOS(.v16),
         .macOS(.v13)
     ],
     products: [
-        .library(name: "EENApiToolkit", targets: ["EENApiToolkit"])
+        .library(name: "EENSwiftToolkit", targets: ["EENSwiftToolkit"])
     ],
     targets: [
-        .target(name: "EENApiToolkit"),
+        .target(name: "EENSwiftToolkit"),
         .testTarget(
-            name: "EENApiToolkitTests",
-            dependencies: ["EENApiToolkit"]
+            name: "EENSwiftToolkitTests",
+            dependencies: ["EENSwiftToolkit"]
         )
     ]
 )

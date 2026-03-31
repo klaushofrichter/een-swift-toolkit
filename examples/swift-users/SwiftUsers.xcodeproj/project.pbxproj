@@ -14,7 +14,7 @@
 		FA00000000000000000005 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB00000000000000000005 /* HomeView.swift */; };
 		FA00000000000000000006 /* UsersListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB00000000000000000006 /* UsersListView.swift */; };
 		FA00000000000000000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FB00000000000000000007 /* Assets.xcassets */; };
-		FA00000000000000000008 /* EENApiToolkit in Frameworks */ = {isa = PBXBuildFile; productRef = FE00000000000000000002 /* EENApiToolkit */; };
+		FA00000000000000000008 /* EENSwiftToolkit in Frameworks */ = {isa = PBXBuildFile; productRef = FE00000000000000000002 /* EENSwiftToolkit */; };
 		FA00000000000000000009 /* OAuthWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB00000000000000000009 /* OAuthWebView.swift */; };
 		FA00000000000000000010 /* Version.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB00000000000000000010 /* Version.swift */; };
 		FA00000000000000000101 /* SwiftUsersUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB00000000000000000101 /* SwiftUsersUITests.swift */; };
@@ -50,7 +50,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FA00000000000000000008 /* EENApiToolkit in Frameworks */,
+				FA00000000000000000008 /* EENSwiftToolkit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -123,7 +123,7 @@
 			);
 			name = SwiftUsers;
 			packageProductDependencies = (
-				FE00000000000000000002 /* EENApiToolkit */,
+				FE00000000000000000002 /* EENSwiftToolkit */,
 			);
 			productName = SwiftUsers;
 			productReference = FB00000000000000000008 /* SwiftUsers.app */;
@@ -488,9 +488,9 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		FE00000000000000000002 /* EENApiToolkit */ = {
+		FE00000000000000000002 /* EENSwiftToolkit */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = EENApiToolkit;
+			productName = EENSwiftToolkit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

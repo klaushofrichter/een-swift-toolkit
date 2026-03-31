@@ -1,6 +1,6 @@
 # SwiftEvents
 
-A SwiftUI iOS app demonstrating event management and real-time SSE streaming features of the [EENApiToolkit](../../README.md) — the native Swift SDK for Eagle Eye Networks REST API v3.0.
+A SwiftUI iOS app demonstrating event management and real-time SSE streaming features of the [EENSwiftToolkit](../../README.md) — the native Swift SDK for Eagle Eye Networks REST API v3.0.
 
 ![Event Types](docs/screenshot-types.png)
 

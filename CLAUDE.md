@@ -50,15 +50,15 @@ toolkit.cameras, .bridges, .events, .media, .feeds, .users, .auth, .authState, .
 ### Source Layout
 
 ```
-Sources/EENApiToolkit/
-  EENApiToolkit.swift          # Main entry point + EENToolkit class
+Sources/EENSwiftToolkit/
+  EENSwiftToolkit.swift          # Main entry point + EENToolkit class
   Auth/                        # OAuth, tokens, TokenStorage (Keychain/InMemory)
   Configuration/               # EENToolkitConfig
   Core/                        # HTTPClient, EENError, QueryParamEncoding, PaginatedResult, Timestamp
   Models/                      # 16 data model files (Camera, Bridge, Event, Media, etc.)
   Services/                    # 16 API service files (CameraService, EventService, etc.)
   SSE/                         # Server-Sent Events streaming (URLSessionDataDelegate)
-Tests/EENApiToolkitTests/
+Tests/EENSwiftToolkitTests/
   Core/                        # Unit tests for utilities
   Services/                    # Model decoding tests
   Auth/                        # Token storage tests

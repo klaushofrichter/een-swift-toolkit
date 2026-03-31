@@ -1,5 +1,5 @@
 import SwiftUI
-import EENApiToolkit
+import EENSwiftToolkit
 
 struct EventTypesView: View {
     let toolkit: EENToolkit

@@ -1,4 +1,4 @@
-# Getting Started with EENApiToolkit for Swift
+# Getting Started with EENSwiftToolkit for Swift
 
 Build iOS and macOS apps that integrate with the Eagle Eye Networks cloud video platform using this native Swift SDK.
 
@@ -11,20 +11,20 @@ Build iOS and macOS apps that integrate with the Eagle Eye Networks cloud video 
 
 ## Installation
 
-Add EENApiToolkit to your Xcode project via Swift Package Manager:
+Add EENSwiftToolkit to your Xcode project via Swift Package Manager:
 
 **File > Add Package Dependencies** and enter the package URL, or add to `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://your-repo/EENApiToolkit", from: "1.0.0")
+    .package(url: "https://your-repo/EENSwiftToolkit", from: "1.0.0")
 ]
 ```
 
 Then add to your target:
 
 ```swift
-.target(name: "YourApp", dependencies: ["EENApiToolkit"])
+.target(name: "YourApp", dependencies: ["EENSwiftToolkit"])
 ```
 
 ## Quick Start
@@ -32,7 +32,7 @@ Then add to your target:
 ### 1. Configure the Toolkit
 
 ```swift
-import EENApiToolkit
+import EENSwiftToolkit
 
 let config = EENToolkitConfig(
     proxyUrl: "https://your-proxy.workers.dev",
@@ -98,7 +98,7 @@ print("Found \(result.results.count) motion events")
 
 ## SwiftUI Integration
 
-EENApiToolkit is designed for SwiftUI. The `AuthState` class is an `ObservableObject` that drives your UI:
+EENSwiftToolkit is designed for SwiftUI. The `AuthState` class is an `ObservableObject` that drives your UI:
 
 ```swift
 @main

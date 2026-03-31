@@ -3,7 +3,7 @@ import os
 
 /// Internal debug logger for the toolkit.
 enum EENDebug {
-    private static let logger = Logger(subsystem: "com.een.api-toolkit", category: "EENApiToolkit")
+    private static let logger = Logger(subsystem: "com.een.api-toolkit", category: "EENSwiftToolkit")
 
     static var isEnabled = false
 

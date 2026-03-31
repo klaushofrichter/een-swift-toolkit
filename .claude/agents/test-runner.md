@@ -38,13 +38,13 @@ assistant: "Let me run the test suite to ensure the refactoring didn't break any
 ## Test Infrastructure
 
 ### Unit Tests
-Located in `Tests/EENApiToolkitTests/`:
+Located in `Tests/EENSwiftToolkitTests/`:
 - `Core/` — Unit tests for HTTPClient, QueryItemBuilder, timestamps
 - `Services/` — Model decoding tests for all 16 resource types
 - `Mocks/` — MockURLProtocol for stubbed network tests
 
 ### Integration Tests
-Located in `Tests/EENApiToolkitTests/Integration/`:
+Located in `Tests/EENSwiftToolkitTests/Integration/`:
 - `LiveServiceTests.swift` — 28 tests against live EEN API
 - Uses Swift Testing framework (`@Suite`, `@Test`, `#expect`)
 - Suite has `.serialized` trait (tests run sequentially to avoid token race conditions)
@@ -184,7 +184,7 @@ If failures exist:
 - Report the build error clearly
 
 ### If running only unit tests (no live API):
-- SPM unit tests: `swift test --filter "EENApiToolkitTests"` (skips integration)
+- SPM unit tests: `swift test --filter "EENSwiftToolkitTests"` (skips integration)
 - ObservationCompanion unit tests only need xcodebuild with `-only-testing:ObservationCompanionTests`
 
 ### If tests hang or timeout:

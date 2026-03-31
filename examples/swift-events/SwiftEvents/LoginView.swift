@@ -1,5 +1,5 @@
 import SwiftUI
-import EENApiToolkit
+import EENSwiftToolkit
 
 struct LoginView: View {
     let toolkit: EENToolkit

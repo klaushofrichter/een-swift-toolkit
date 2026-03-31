@@ -33,7 +33,7 @@ The `proxyUrl` in `EENToolkitConfig` points to whichever proxy instance you're u
 3. Enter the repository URL: `https://github.com/klaushofrichter/een-swift-toolkit.git`
 4. Select **Up to Next Major Version** and enter `0.1.0`
 5. Click **Add Package**
-6. Select `EENApiToolkit` and add it to your target
+6. Select `EENSwiftToolkit` and add it to your target
 
 ### Package.swift
 
@@ -45,14 +45,14 @@ dependencies: [
 ]
 ```
 
-Then add `EENApiToolkit` to your target:
+Then add `EENSwiftToolkit` to your target:
 
 ```swift
 targets: [
     .target(
         name: "YourApp",
         dependencies: [
-            .product(name: "EENApiToolkit", package: "een-swift-toolkit")
+            .product(name: "EENSwiftToolkit", package: "een-swift-toolkit")
         ]
     )
 ]
@@ -61,7 +61,7 @@ targets: [
 ### Import
 
 ```swift
-import EENApiToolkit
+import EENSwiftToolkit
 ```
 
 The SDK has no external dependencies — it uses only Foundation and URLSession.
@@ -69,7 +69,7 @@ The SDK has no external dependencies — it uses only Foundation and URLSession.
 ## Quick Start
 
 ```swift
-import EENApiToolkit
+import EENSwiftToolkit
 
 let config = EENToolkitConfig(
     proxyUrl: "http://127.0.0.1:3333",
@@ -395,15 +395,15 @@ Detailed guides are available in `docs/`:
 ## File Structure
 
 ```
-Sources/EENApiToolkit/
-  EENApiToolkit.swift          # Main entry point
+Sources/EENSwiftToolkit/
+  EENSwiftToolkit.swift          # Main entry point
   Auth/                        # OAuth, tokens, storage
   Configuration/               # EENToolkitConfig
   Core/                        # HTTPClient, errors, pagination, query encoding, timestamps
   Models/                      # 16 data model files
   Services/                    # 16 API service files
   SSE/                         # Server-Sent Events streaming
-Tests/EENApiToolkitTests/
+Tests/EENSwiftToolkitTests/
   Core/                        # Unit tests for core utilities
   Services/                    # Model decoding tests
   Integration/                 # Live API tests (require credentials)

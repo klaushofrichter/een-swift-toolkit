@@ -1,6 +1,6 @@
 import Testing
 import Foundation
-@testable import EENApiToolkit
+@testable import EENSwiftToolkit
 
 @Suite("Event Model Tests")
 struct EventModelTests {
