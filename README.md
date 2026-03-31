@@ -140,6 +140,21 @@ xcodebuild test -project examples/swift-media/SwiftMedia.xcodeproj \
 cd examples/swift-media && ./run-ui-tests.sh
 ```
 
+### swift-events
+
+The `examples/swift-events/` directory contains an iOS demo app for the Events API:
+
+- Event types listing per camera via `listFieldValues`
+- Historical event browsing with adjustable time range (1-24 hours)
+- Real-time SSE event streaming with connection management
+- Event detail modal with full JSON and copy-to-clipboard
+- 2 unit tests, 10 XCUITest E2E tests
+
+```bash
+# Run E2E tests
+cd examples/swift-events && ./run-ui-tests.sh
+```
+
 ### ObservationCompanion
 
 The `examples/ObservationCompanion/` directory contains an iOS app for real-time camera event monitoring. It supports two auth modes:
@@ -157,6 +172,56 @@ xcodebuild test -project examples/ObservationCompanion/ObservationCompanion.xcod
   -scheme ObservationCompanion \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
 ```
+
+## Branching & CI
+
+| Branch | Purpose |
+|--------|---------|
+| `develop` | Active development. All work is committed here. |
+| `production` | Stable release branch. Protected — changes only via PR from `develop`. |
+
+### GitHub Actions Workflow
+
+The [Tests workflow](.github/workflows/tests.yml) runs automatically on:
+- **PR to `production`** — required checks must pass before merge
+
+**Automatic jobs (every PR):**
+
+| Job | What it does | Runner |
+|-----|-------------|--------|
+| Toolkit Unit Tests | `swift test --skip LiveServiceTests` | macOS |
+| Build Examples | Builds swift-media, swift-events, swift-users in parallel | macOS |
+| Example Unit Tests | Runs swift-media and swift-events unit tests on simulator | macOS |
+
+**Manual jobs (workflow_dispatch):**
+
+| Job | What it does | Requires |
+|-----|-------------|----------|
+| Integration & E2E Tests | Acquires credentials via Playwright, runs LiveServiceTests + all XCUITests | `TEST_USER` and `TEST_PASSWORD` secrets |
+
+### Branch Protection (production)
+
+- Pull request required (merges only from `develop`)
+- Required status checks must pass: unit tests + all example builds
+- Enforced for admins
+- No force pushes or deletions
+
+### Releases
+
+When a PR is merged to `production`, the [Release workflow](.github/workflows/release.yml) automatically:
+1. Reads the version from `package.json` (e.g., `0.1.21`)
+2. Generates release notes from commit messages since the last tag
+3. Creates a git tag (`v0.1.21`) and a GitHub Release
+
+Third-party Swift projects consume the SDK via SPM using the tagged version:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/klaushofrichter/een-swift-toolkit.git", from: "0.1.0")
+]
+```
+
+To bump the version before releasing, update the `version` field in `package.json` on `develop` before creating the PR to `production`.
 
 ## Testing
 
@@ -300,6 +365,7 @@ Tests/EENApiToolkitTests/
 examples/
   swift-users/                 # iOS demo app (SwiftUI, OAuth login, user listing)
   swift-media/                 # iOS media demo (live/recorded images, HLS video)
+  swift-events/                # iOS events demo (event types, history, SSE streaming)
   ObservationCompanion/        # iOS camera event monitor (QR code + OAuth, live video, SSE)
 docs/                          # Developer guides
 .claude/agents/                # Claude Code specialized agents
