@@ -10,7 +10,18 @@ A native Swift SDK for the [Eagle Eye Networks](https://www.een.com) REST API v3
 
 ## Installation
 
-Add the package via Swift Package Manager:
+### Xcode
+
+1. Open your project in Xcode
+2. Go to **File > Add Package Dependencies...**
+3. Enter the repository URL: `https://github.com/klaushofrichter/een-swift-toolkit.git`
+4. Select **Up to Next Major Version** and enter `0.1.0`
+5. Click **Add Package**
+6. Select `EENApiToolkit` and add it to your target
+
+### Package.swift
+
+Add the dependency to your `Package.swift`:
 
 ```swift
 dependencies: [
@@ -18,7 +29,26 @@ dependencies: [
 ]
 ```
 
-Then add `EENApiToolkit` to your target's dependencies.
+Then add `EENApiToolkit` to your target:
+
+```swift
+targets: [
+    .target(
+        name: "YourApp",
+        dependencies: [
+            .product(name: "EENApiToolkit", package: "een-swift-toolkit")
+        ]
+    )
+]
+```
+
+### Import
+
+```swift
+import EENApiToolkit
+```
+
+The SDK has no external dependencies — it uses only Foundation and URLSession.
 
 ## Quick Start
 
