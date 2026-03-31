@@ -8,6 +8,22 @@ A native Swift SDK for the [Eagle Eye Networks](https://www.een.com) REST API v3
 - Swift 5.9+
 - No external dependencies
 
+## OAuth Proxy
+
+This SDK authenticates via an OAuth proxy that holds client secrets server-side, keeping them out of the mobile app. The proxy handles token exchange, refresh, and revocation.
+
+The companion project [een-mobile-proxy](https://github.com/klaushofrichter/een-mobile-proxy) provides a Cloudflare Worker that serves as this proxy. You can run it locally for development or deploy it to Cloudflare Workers for production use:
+
+```bash
+# Local development
+cd een-mobile-proxy/proxy && npm run dev    # runs on http://127.0.0.1:3333
+
+# Production (Cloudflare Workers)
+# https://een-mobile-proxy.klaushofrichter.workers.dev
+```
+
+The `proxyUrl` in `EENToolkitConfig` points to whichever proxy instance you're using.
+
 ## Installation
 
 ### Xcode
