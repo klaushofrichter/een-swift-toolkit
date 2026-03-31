@@ -11,7 +11,6 @@ TARGETS=(
   "examples/swift-media/SwiftMedia"
   "examples/swift-events/SwiftEvents"
   "examples/swift-users/SwiftUsers"
-  "examples/ObservationCompanion/ObservationCompanion"
 )
 
 for TARGET in "${TARGETS[@]}"; do

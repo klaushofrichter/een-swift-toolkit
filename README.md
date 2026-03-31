@@ -201,23 +201,6 @@ The `examples/swift-events/` directory contains an iOS demo app for the Events A
 cd examples/swift-events && ./run-ui-tests.sh
 ```
 
-### ObservationCompanion
-
-The `examples/ObservationCompanion/` directory contains an iOS app for real-time camera event monitoring. It supports two auth modes:
-
-- **QR Code flow** — scan a deep link (`eenobserve://viewer?token=...&cam=...&base=...`) for token injection
-- **OAuth flow** — full OAuth login via the mobile proxy
-
-Features: live HLS video, SSE event streaming, event type filtering, token countdown, camera switching.
-
-Unit tests cover EventTypeHash, CameraEvent, AppState URL parsing, state management, and token countdown logic:
-
-```bash
-# Run via Xcode (requires simulator)
-xcodebuild test -project examples/ObservationCompanion/ObservationCompanion.xcodeproj \
-  -scheme ObservationCompanion \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
-```
 
 ## Branching & CI
 
@@ -317,12 +300,6 @@ cd examples/swift-users && ./run-ui-tests.sh
 cd examples/swift-media && ./run-ui-tests.sh
 ```
 
-ObservationCompanion unit tests:
-```bash
-xcodebuild test -project examples/ObservationCompanion/ObservationCompanion.xcodeproj \
-  -scheme ObservationCompanion \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
-```
 
 ## Claude Code Agents
 
@@ -412,7 +389,6 @@ examples/
   swift-users/                 # iOS demo app (SwiftUI, OAuth login, user listing)
   swift-media/                 # iOS media demo (live/recorded images, HLS video)
   swift-events/                # iOS events demo (event types, history, SSE streaming)
-  ObservationCompanion/        # iOS camera event monitor (QR code + OAuth, live video, SSE)
 docs/                          # Developer guides
 .claude/agents/                # Claude Code specialized agents
 ```

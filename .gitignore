@@ -3,7 +3,6 @@
 .swiftpm/
 *.xcodeproj/
 !examples/**/SwiftUsers.xcodeproj/
-!examples/**/ObservationCompanion.xcodeproj/
 !examples/**/SwiftMedia.xcodeproj/
 xcuserdata/
 DerivedData/

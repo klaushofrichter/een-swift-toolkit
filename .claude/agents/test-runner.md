@@ -52,8 +52,6 @@ Located in `Tests/EENSwiftToolkitTests/Integration/`:
 
 ### Xcode Project Tests (Example Apps)
 Example apps have their own test targets run via xcodebuild, not `swift test`:
-- **ObservationCompanion unit tests** — `ObservationCompanionTests` target (Swift Testing framework, no proxy needed)
-- **ObservationCompanion E2E tests** — `ObservationCompanionUITests` target (XCUITest, requires proxy + credentials)
 - **SwiftUsers UI tests** — `SwiftUsersUITests` target (XCUITest, requires proxy + credentials)
 - **SwiftMedia unit tests** — `SwiftMediaTests` target (XCTest, no proxy needed; tests formatDuration, formatEENTimestamp, AppConfig)
 - **SwiftMedia E2E tests** — `SwiftMediaUITests` target (XCUITest, requires proxy + credentials; 16 tests covering all tabs)
@@ -107,21 +105,7 @@ This script:
 4. Runs `swift test --filter LiveServiceTests`
 5. Cleans up credentials file
 
-### Step 3: Run ObservationCompanion E2E Tests
-```bash
-cd examples/ObservationCompanion && ./run-e2e-tests.sh 2>&1
-```
-This script:
-1. Ensures proxy is running
-2. Acquires credentials via Playwright
-3. Discovers a camera ID via the API
-4. Finds/boots an iOS simulator
-5. Runs `xcodebuild test -only-testing:ObservationCompanionUITests`
-6. Cleans up credential files
-
-**Note**: This also compiles and runs the ObservationCompanion unit tests (`ObservationCompanionTests`) as part of the build. Takes 2-5 minutes (token acquisition + simulator boot + ~30s per live test).
-
-### Step 4: Run SwiftUsers UI Tests
+### Step 3: Run SwiftUsers UI Tests
 ```bash
 cd examples/swift-users && ./run-ui-tests.sh 2>&1
 ```
@@ -148,7 +132,6 @@ TEST SUMMARY
 ================
 SPM Unit Tests:                    X passed | Y failed | Z skipped
 SPM Integration Tests:             X passed | Y failed | Z skipped
-ObservationCompanion E2E Tests:    X passed | Y failed | Z skipped
 SwiftUsers UI Tests:               X passed | Y failed | Z skipped
 SwiftMedia Unit Tests:             X passed | Y failed | Z skipped
 SwiftMedia E2E Tests:              X passed | Y failed | Z skipped
@@ -185,7 +168,6 @@ If failures exist:
 
 ### If running only unit tests (no live API):
 - SPM unit tests: `swift test --filter "EENSwiftToolkitTests"` (skips integration)
-- ObservationCompanion unit tests only need xcodebuild with `-only-testing:ObservationCompanionTests`
 
 ### If tests hang or timeout:
 - Allow 2 minutes for unit tests, 5 minutes for integration tests, 5 minutes per E2E suite
