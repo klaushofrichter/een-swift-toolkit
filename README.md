@@ -202,6 +202,10 @@ cd examples/swift-events && ./run-ui-tests.sh
 ```
 
 
+## Apps Using This SDK
+
+- [ObservationCompanion](https://github.com/klaushofrichter/ObservationCompanion) — An iOS app for real-time camera event monitoring with SSE streaming, event history browsing, and bounding box overlays.
+
 ## Branching & CI
 
 | Branch | Purpose |
