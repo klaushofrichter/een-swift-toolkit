@@ -244,7 +244,7 @@ public actor AuthManager {
         EENDebug.log("Revoking token")
 
         // Best-effort revoke -- don't throw on failure
-        let _ = try? await URLSession.shared.data(for: request)
+        _ = try? await URLSession.shared.data(for: request)
 
         // Always clear local state regardless of revoke outcome
         await clearAuth()
