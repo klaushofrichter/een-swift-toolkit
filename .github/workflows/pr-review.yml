@@ -20,10 +20,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read additional review prompts
+      - name: Read additional review prompts from base branch
         id: read-prompts
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
+          # Read from base branch to prevent prompt injection via PR head
+          # Note: BASE_REF is empty on workflow_dispatch — falls through gracefully
           PROMPT_FILE=".github/claude-review.md"
+          if [ -n "$BASE_REF" ]; then
+            git show "origin/${BASE_REF}:${PROMPT_FILE}" > /tmp/claude-review.md 2>/dev/null && PROMPT_FILE="/tmp/claude-review.md" || PROMPT_FILE=".github/claude-review.md"
+          fi
           MAX_SIZE=4096  # Limit to 4KB to prevent prompt overflow
           if [ -f "$PROMPT_FILE" ]; then
             FILE_SIZE=$(wc -c < "$PROMPT_FILE")
@@ -104,8 +111,7 @@ jobs:
             const finalResult = findLastAssistantText(turns);
 
             if (!finalResult) {
-              core.warning('No final result found in execution output');
-              console.log('Turn types found:', turns.map(t => t.type));
+              core.setFailed('No final result found in Claude review execution output');
               return;
             }
 

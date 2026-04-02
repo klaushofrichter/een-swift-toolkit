@@ -69,8 +69,8 @@ upload_secret() {
     fi
 
     # Extract value after first '=' and strip surrounding quotes (double or single)
+    # Note: inline comments are NOT stripped — values may legitimately contain '#'
     local value="${line#*=}"
-    value="${value%%#*}"           # strip inline comments
     value="${value%"${value##*[! ]}"}"  # strip trailing whitespace
     value="${value#\"}" ; value="${value%\"}"  # strip double quotes
     value="${value#\'}" ; value="${value%\'}"  # strip single quotes
@@ -86,7 +86,9 @@ upload_secret() {
     fi
 
     echo -n "Uploading $gh_secret_name... "
-    if printf '%s' "$value" | gh secret set "$gh_secret_name" 2>/dev/null; then
+    local repo
+    repo=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+    if printf '%s' "$value" | gh secret set "$gh_secret_name" --repo "$repo"; then
         echo -e "${GREEN}✓${NC}"
     else
         echo -e "${RED}✗ Failed${NC}"

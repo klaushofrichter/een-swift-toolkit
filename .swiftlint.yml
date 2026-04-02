@@ -1,6 +1,5 @@
 disabled_rules:
   - identifier_name
-  - force_try
   - line_length
   - for_where
   - redundant_sendable

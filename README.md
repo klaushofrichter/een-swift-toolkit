@@ -146,6 +146,8 @@ All services use `async throws` and return `Codable`, `Sendable`, `Identifiable`
 
 ## Example Apps
 
+Each example app has its own version number (in `Version.swift`), managed independently from the SDK version in `package.json`. Version numbers across examples may differ and may have gaps — this is expected.
+
 ### swift-users
 
 The `examples/swift-users/` directory contains a complete iOS demo app that demonstrates OAuth login, user profile display, and paginated user listing. It includes:
