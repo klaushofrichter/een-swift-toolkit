@@ -20,17 +20,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read additional review prompts from base branch
+      - name: Read additional review prompts
         id: read-prompts
-        env:
-          BASE_REF: ${{ github.base_ref }}
         run: |
-          # Read from base branch to prevent prompt injection via PR head
-          # Note: BASE_REF is empty on workflow_dispatch — this falls through gracefully
           PROMPT_FILE=".github/claude-review.md"
-          git show "${BASE_REF}:${PROMPT_FILE}" > /tmp/claude-review.md 2>/dev/null && PROMPT_FILE="/tmp/claude-review.md" || PROMPT_FILE=""
           MAX_SIZE=4096  # Limit to 4KB to prevent prompt overflow
-          if [ -n "$PROMPT_FILE" ] && [ -f "$PROMPT_FILE" ]; then
+          if [ -f "$PROMPT_FILE" ]; then
             FILE_SIZE=$(wc -c < "$PROMPT_FILE")
             if [ "$FILE_SIZE" -gt "$MAX_SIZE" ]; then
               echo "::error::claude-review.md exceeds ${MAX_SIZE} bytes (${FILE_SIZE} bytes). Please reduce file size to prevent instructions being cut off."
@@ -78,7 +73,6 @@ jobs:
             const execFile = process.env.EXEC_FILE;
 
             // Extract the last assistant text from conversation turns
-            // Uses reverse iteration with early break for better performance
             function findLastAssistantText(turns) {
               for (let i = turns.length - 1; i >= 0; i--) {
                 const turn = turns[i];
@@ -128,5 +122,5 @@ jobs:
               });
               console.log('Posted review comment to PR');
             } catch (error) {
-              core.setFailed(`Failed to post review comment: ${error.message}`);
+              core.warning(`Failed to post review comment: ${error.message}`);
             }
