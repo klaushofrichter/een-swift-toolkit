@@ -70,7 +70,9 @@ upload_secret() {
     fi
 
     echo -n "Uploading $gh_secret_name... "
-    if printf '%s' "$value" | gh secret set "$gh_secret_name" 2>/dev/null; then
+    local repo
+    repo=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+    if printf '%s' "$value" | gh secret set "$gh_secret_name" --repo "$repo" 2>/dev/null; then
         echo -e "${GREEN}✓${NC}"
     else
         echo -e "${RED}✗ Failed${NC}"

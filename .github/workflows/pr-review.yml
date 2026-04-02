@@ -20,12 +20,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read additional review prompts
+      - name: Read additional review prompts from base branch
         id: read-prompts
         run: |
+          # Read from base branch to prevent prompt injection via PR head
           PROMPT_FILE=".github/claude-review.md"
+          git show "${{ github.base_ref }}:${PROMPT_FILE}" > /tmp/claude-review.md 2>/dev/null && PROMPT_FILE="/tmp/claude-review.md" || PROMPT_FILE=""
           MAX_SIZE=4096  # Limit to 4KB to prevent prompt overflow
-          if [ -f "$PROMPT_FILE" ]; then
+          if [ -n "$PROMPT_FILE" ] && [ -f "$PROMPT_FILE" ]; then
             FILE_SIZE=$(wc -c < "$PROMPT_FILE")
             if [ "$FILE_SIZE" -gt "$MAX_SIZE" ]; then
               echo "::error::claude-review.md exceeds ${MAX_SIZE} bytes (${FILE_SIZE} bytes). Please reduce file size to prevent instructions being cut off."
@@ -45,7 +47,7 @@ jobs:
 
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@686da461dadac38c2bde9089909de4042a75ebf0 # v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

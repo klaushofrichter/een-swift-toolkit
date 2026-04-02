@@ -213,10 +213,13 @@ cd examples/swift-events && ./run-ui-tests.sh
 | `develop` | Active development. All work is committed here. |
 | `production` | Stable release branch. Protected — changes only via PR from `develop`. |
 
-### GitHub Actions Workflow
+### GitHub Actions Workflows
 
-The [Tests workflow](.github/workflows/tests.yml) runs automatically on:
-- **PR to `production`** — required checks must pass before merge
+The following workflows run automatically on PRs to `production` (this is intentional — `production` is the stable release branch, and all changes flow through `develop` → `production` PRs):
+
+- [Tests](.github/workflows/tests.yml) — unit tests, example builds, and optional integration/E2E tests
+- [CodeQL Analysis](.github/workflows/codeql.yml) — static security analysis for Swift
+- [Claude Code Review](.github/workflows/pr-review.yml) — automated AI code review
 
 **Automatic jobs (every PR):**
 
