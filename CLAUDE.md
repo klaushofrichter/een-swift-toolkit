@@ -29,7 +29,7 @@ swift test --filter CameraModelTests/testDecodeCameraWithDeviceInfo
 ./scripts/run-integration-tests.sh
 ```
 
-No linter configured. No SwiftLint or SwiftFormat.
+SwiftLint is configured via `.swiftlint.yml` and runs in CI on PRs to `production`.
 
 ## Architecture
 
