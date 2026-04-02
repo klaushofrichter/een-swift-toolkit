@@ -1,0 +1,15 @@
+disabled_rules:
+  - identifier_name
+  - line_length
+  - for_where
+  - redundant_sendable
+  - type_name
+  - function_body_length
+  - file_length
+  - cyclomatic_complexity
+  - type_body_length
+  - large_tuple
+  - nesting
+
+included:
+  - Sources/

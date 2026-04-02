@@ -3,6 +3,7 @@ import Foundation
 /// Validates hostnames against the EEN domain allowlist.
 enum HostnameValidator {
     private static let allowedDomains = [".eagleeyenetworks.com", ".een.cloud"]
+    // swiftlint:disable:next force_try
     private static let validHostnameRegex = try! NSRegularExpression(
         pattern: "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$"
     )

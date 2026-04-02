@@ -146,6 +146,8 @@ All services use `async throws` and return `Codable`, `Sendable`, `Identifiable`
 
 ## Example Apps
 
+Each example app has its own version number (in `Version.swift`), managed independently from the SDK version in `package.json`. Version numbers across examples may differ and may have gaps — this is expected.
+
 ### swift-users
 
 The `examples/swift-users/` directory contains a complete iOS demo app that demonstrates OAuth login, user profile display, and paginated user listing. It includes:
@@ -213,10 +215,13 @@ cd examples/swift-events && ./run-ui-tests.sh
 | `develop` | Active development. All work is committed here. |
 | `production` | Stable release branch. Protected — changes only via PR from `develop`. |
 
-### GitHub Actions Workflow
+### GitHub Actions Workflows
 
-The [Tests workflow](.github/workflows/tests.yml) runs automatically on:
-- **PR to `production`** — required checks must pass before merge
+The following workflows run automatically on PRs to `production` (this is intentional — `production` is the stable release branch, and all changes flow through `develop` → `production` PRs):
+
+- [Tests](.github/workflows/tests.yml) — unit tests, example builds, and optional integration/E2E tests
+- [SwiftLint](.github/workflows/swiftlint.yml) — Swift style and convention linting
+- [Claude Code Review](.github/workflows/pr-review.yml) — automated AI code review
 
 **Automatic jobs (every PR):**
 
@@ -254,7 +259,7 @@ dependencies: [
 ]
 ```
 
-To bump the version before releasing, update the `version` field in `package.json` on `develop` before creating the PR to `production`.
+To bump the version before releasing, update the `version` field in `package.json` on `develop` before creating the PR to `production`. Version numbers may have gaps (e.g., jumping from 0.1.27 to 0.1.29) — this is expected when the version generation script runs across multiple commits during development.
 
 ## Testing
 
