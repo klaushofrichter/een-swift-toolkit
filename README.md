@@ -257,7 +257,7 @@ dependencies: [
 ]
 ```
 
-To bump the version before releasing, update the `version` field in `package.json` on `develop` before creating the PR to `production`.
+To bump the version before releasing, update the `version` field in `package.json` on `develop` before creating the PR to `production`. Version numbers may have gaps (e.g., jumping from 0.1.27 to 0.1.29) — this is expected when the version generation script runs across multiple commits during development.
 
 ## Testing
 

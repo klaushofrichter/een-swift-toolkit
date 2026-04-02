@@ -43,6 +43,11 @@ fi
 echo "Reading secrets from: $ENV_FILE"
 echo ""
 
+# Resolve repo once for all secret uploads
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+echo "Target repository: $REPO"
+echo ""
+
 # Function to upload a secret
 upload_secret() {
     local gh_secret_name="$1"
@@ -56,8 +61,11 @@ upload_secret() {
     fi
 
     local value="${line#*=}"
+    # Strip double and single quotes
     value="${value#\"}"
     value="${value%\"}"
+    value="${value#\'}"
+    value="${value%\'}"
 
     if [ -z "$value" ]; then
         echo -e "${YELLOW}⚠ Skipping $gh_secret_name - $env_var_name has empty value${NC}"
@@ -70,9 +78,7 @@ upload_secret() {
     fi
 
     echo -n "Uploading $gh_secret_name... "
-    local repo
-    repo=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-    if printf '%s' "$value" | gh secret set "$gh_secret_name" --repo "$repo" 2>/dev/null; then
+    if printf '%s' "$value" | gh secret set "$gh_secret_name" --repo "$REPO"; then
         echo -e "${GREEN}✓${NC}"
     else
         echo -e "${RED}✗ Failed${NC}"

@@ -16,16 +16,19 @@ jobs:
       issues: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Read additional review prompts from base branch
         id: read-prompts
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           # Read from base branch to prevent prompt injection via PR head
+          # Note: BASE_REF is empty on workflow_dispatch — this falls through gracefully
           PROMPT_FILE=".github/claude-review.md"
-          git show "${{ github.base_ref }}:${PROMPT_FILE}" > /tmp/claude-review.md 2>/dev/null && PROMPT_FILE="/tmp/claude-review.md" || PROMPT_FILE=""
+          git show "${BASE_REF}:${PROMPT_FILE}" > /tmp/claude-review.md 2>/dev/null && PROMPT_FILE="/tmp/claude-review.md" || PROMPT_FILE=""
           MAX_SIZE=4096  # Limit to 4KB to prevent prompt overflow
           if [ -n "$PROMPT_FILE" ] && [ -f "$PROMPT_FILE" ]; then
             FILE_SIZE=$(wc -c < "$PROMPT_FILE")
@@ -65,7 +68,7 @@ jobs:
             ${{ steps.read-prompts.outputs.extra_prompt }}
 
       - name: Extract and Post Review Comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           EXEC_FILE: ${{ steps.claude-review.outputs.execution_file }}
         with:
