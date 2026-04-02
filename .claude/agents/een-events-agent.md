@@ -41,8 +41,7 @@ assistant: "I'll use the een-events-agent to set up event subscriptions and SSE 
 - Sources/EENSwiftToolkit/Models/Event.swift
 - Sources/EENSwiftToolkit/Models/EventSubscription.swift
 - Sources/EENSwiftToolkit/SSE/SSEClient.swift
-- examples/ObservationCompanion/ObservationCompanion/Models/EventDataSchemas.swift (event type → data schema mapping)
-- examples/ObservationCompanion/ObservationCompanion/Models/CameraEvent.swift (app event model with data extraction helpers)
+- See [ObservationCompanion](https://github.com/klaushofrichter/ObservationCompanion) for event type → data schema mapping and app event model examples
 
 ## Reference
 - Tests/EENSwiftToolkitTests/Integration/LiveServiceTests.swift (working examples)
@@ -238,9 +237,9 @@ if let reason = dataItem.additionalProperties?["reason"],
 // lowerBodyClothingColor, lowerBodyClothingColorConfidence
 ```
 
-### Dynamic Include Parameters (ObservationCompanion)
+### Dynamic Include Parameters
 
-The ObservationCompanion app uses `EventDataSchemas` (in `Models/EventDataSchemas.swift`)
+The [ObservationCompanion](https://github.com/klaushofrichter/ObservationCompanion) app uses `EventDataSchemas`
 to dynamically build the `include` parameter based on the camera's active event types:
 ```swift
 // Discover which event types the camera supports
@@ -262,7 +261,7 @@ simply returns the event without additional data.
 ### Which Events Support Which Schemas
 
 Not all event types support all data schemas. The full mapping is available in:
-- **Swift (ObservationCompanion):** `examples/ObservationCompanion/ObservationCompanion/Models/EventDataSchemas.swift`
+- **Swift:** See [ObservationCompanion](https://github.com/klaushofrichter/ObservationCompanion) `Models/EventDataSchemas.swift`
 - **TypeScript:** `../een-api-toolkit/src/events/dataSchemas.ts`
 
 Key detection events and their schemas:

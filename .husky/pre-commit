@@ -27,4 +27,3 @@ fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 git add package.json
 git add examples/swift-media/SwiftMedia/Version.swift
 git add examples/swift-users/SwiftUsers/Version.swift
-git add examples/ObservationCompanion/ObservationCompanion/Version.swift

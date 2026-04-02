@@ -35,10 +35,7 @@ assistant: "I'll use the een-swifttest-agent to create a run script with proxy, 
 
 ## Reference Implementations
 
-The ObservationCompanion app has a working E2E test suite:
-- `examples/ObservationCompanion/ObservationCompanionUITests/ObservationCompanionUITests.swift`
-- `examples/ObservationCompanion/run-e2e-tests.sh`
-- Views with accessibility identifiers: `MainContentView.swift`, `LiveVideoView.swift`, `EventFeedView.swift`, `ScannerView.swift`
+The [ObservationCompanion](https://github.com/klaushofrichter/ObservationCompanion) app (separate repo) has a working E2E test suite as a reference.
 
 The SwiftUsers app also has UI tests:
 - `examples/swift-users/SwiftUsersUITests/SwiftUsersUITests.swift`
@@ -448,7 +445,6 @@ Different apps use different credential file paths:
 
 | App | Credential File | Needs cameraId |
 |-----|----------------|----------------|
-| ObservationCompanion | `e2e-credentials.json` (in project dir) | Yes |
 | SwiftUsers | `ui-test-credentials.json` (in project dir) or `test-credentials.json` (toolkit root) | No |
 | SwiftMedia | `ui-test-credentials.json` (in project dir) or `test-credentials.json` (toolkit root) | No (auto-selects first camera) |
 
