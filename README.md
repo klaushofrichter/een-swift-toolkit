@@ -218,7 +218,7 @@ cd examples/swift-events && ./run-ui-tests.sh
 The following workflows run automatically on PRs to `production` (this is intentional — `production` is the stable release branch, and all changes flow through `develop` → `production` PRs):
 
 - [Tests](.github/workflows/tests.yml) — unit tests, example builds, and optional integration/E2E tests
-- [CodeQL Analysis](.github/workflows/codeql.yml) — static security analysis for Swift
+- [SwiftLint](.github/workflows/swiftlint.yml) — Swift style and convention linting
 - [Claude Code Review](.github/workflows/pr-review.yml) — automated AI code review
 
 **Automatic jobs (every PR):**
