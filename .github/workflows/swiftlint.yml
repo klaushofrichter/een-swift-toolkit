@@ -17,7 +17,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+      - name: Install SwiftLint
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+        run: brew install swiftlint
+
       - name: Run SwiftLint
-        uses: realm/SwiftLint@v0.58.2
-        with:
-          args: --reporter github-actions-logging Sources/
+        run: swiftlint lint --reporter github-actions-logging Sources/
