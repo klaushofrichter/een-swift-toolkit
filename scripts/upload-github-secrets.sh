@@ -56,12 +56,18 @@ if [[ ! "$confirm" =~ ^[yY]$ ]]; then
 fi
 echo ""
 
+# Resolve repo once for all secret uploads
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+echo "Target repository: $REPO"
+echo ""
+
 # Function to upload a secret
 upload_secret() {
     local gh_secret_name="$1"
     local env_var_name="$2"
 
-    local line=$(grep "^${env_var_name}=" "$ENV_FILE" 2>/dev/null | head -1)
+    local line
+    line=$(grep "^${env_var_name}=" "$ENV_FILE" 2>/dev/null | head -1) || true
 
     if [ -z "$line" ]; then
         echo -e "${YELLOW}⚠ Skipping $gh_secret_name - $env_var_name not found in .env${NC}"
@@ -86,9 +92,7 @@ upload_secret() {
     fi
 
     echo -n "Uploading $gh_secret_name... "
-    local repo
-    repo=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-    if printf '%s' "$value" | gh secret set "$gh_secret_name" --repo "$repo"; then
+    if printf '%s' "$value" | gh secret set "$gh_secret_name" --repo "$REPO"; then
         echo -e "${GREEN}✓${NC}"
     else
         echo -e "${RED}✗ Failed${NC}"
