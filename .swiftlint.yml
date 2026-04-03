@@ -1,15 +1,17 @@
+# Disabled rules reflect the existing codebase conventions.
+# force_try is enabled globally with inline disables where intentional.
 disabled_rules:
-  - identifier_name
-  - line_length
-  - for_where
-  - redundant_sendable
-  - type_name
-  - function_body_length
-  - file_length
-  - cyclomatic_complexity
-  - type_body_length
-  - large_tuple
-  - nesting
+  - identifier_name       # EEN API uses short names (q, b, s) in query builders and decoders
+  - line_length           # Service files have long method signatures matching API endpoints
+  - for_where             # SSE parsing uses if-inside-for for readability
+  - redundant_sendable    # Actor-isolated types trigger false positives
+  - type_name             # Single-letter generics and EEN-prefixed types
+  - function_body_length  # Service methods with many query parameters
+  - file_length           # Model files aggregate related types (Camera, Bridge, Event)
+  - cyclomatic_complexity # Decoders with multiple fallback branches (AnyCodable, status enums)
+  - type_body_length      # Toolkit class and large model types
+  - large_tuple           # API response destructuring
+  - nesting               # Nested enums in model types (e.g., Camera.Status)
 
 included:
   - Sources/
